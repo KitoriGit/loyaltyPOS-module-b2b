@@ -17,7 +17,7 @@ import {
   Save,
   RefreshCw
 } from 'lucide-react';
-import { useLoyaltyStore } from '../store/useLoyaltyStore';
+import { useLoyaltyStore, type Reward } from '../store/useLoyaltyStore';
 
 import { useState } from 'react';
 
