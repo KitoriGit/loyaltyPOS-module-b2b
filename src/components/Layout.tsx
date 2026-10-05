@@ -1,11 +1,11 @@
-import { ReactNode } from 'react';
+import type { ReactNode } from 'react';
 import { NavLink } from 'react-router-dom';
-import { 
-  Monitor, 
-  Settings, 
-  Users, 
-  BarChart3, 
-  Moon, 
+import {
+  Monitor,
+  Settings,
+  Users,
+  BarChart3,
+  Moon,
   LogOut,
   Store
 } from 'lucide-react';
@@ -15,11 +15,10 @@ interface LayoutProps {
 }
 
 export function Layout({ children }: LayoutProps) {
-  const getNavClasses = ({ isActive }: { isActive: boolean }) => 
-    `group flex items-center justify-between px-space-md py-space-sm rounded-xl transition-colors ${
-      isActive 
-        ? 'bg-primary-container text-on-primary shadow-[0_1px_8px_rgba(0,0,0,0.04)]' 
-        : 'text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface'
+  const getNavClasses = ({ isActive }: { isActive: boolean }) =>
+    `group flex items-center justify-between px-space-md py-space-sm rounded-xl transition-colors ${isActive
+      ? 'bg-primary-container text-on-primary shadow-[0_1px_8px_rgba(0,0,0,0.04)]'
+      : 'text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface'
     }`;
 
   return (
@@ -87,7 +86,7 @@ export function Layout({ children }: LayoutProps) {
           </div>
         </div>
       </aside>
-      
+
       <div className="flex-1 ml-72 flex flex-col min-h-screen">
         <header className="sticky top-0 h-16 bg-surface-container-lowest/90 backdrop-blur-xl shadow-[0_1px_8px_rgba(0,0,0,0.04)] z-40 flex items-center justify-between px-space-lg">
           <div className="flex items-center gap-space-md"></div>
@@ -98,7 +97,7 @@ export function Layout({ children }: LayoutProps) {
             </div>
           </div>
         </header>
-        
+
         <main className="flex-1 w-full p-space-lg">
           {children}
         </main>
