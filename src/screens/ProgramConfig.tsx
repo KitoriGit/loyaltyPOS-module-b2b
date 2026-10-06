@@ -153,7 +153,7 @@ export function ProgramConfig() {
         {!isPuntos && (
           <div className="flex items-center gap-space-sm px-space-md py-2.5 rounded-xl bg-surface-container-high/60 border border-outline-variant/40 text-on-surface-variant font-sans text-xs">
             <Lock className="w-4.5 h-4.5 text-outline" />
-            <span>Esta configuración se habilita con la opción <strong>"Programa de Puntos"</strong></span>
+            <span>Esta configuración se habilita con la opción <strong>"Programa de Puntos"</strong>. En modo sellos se otorga 1 sello por cada compra registrada.</span>
           </div>
         )}
         
@@ -178,22 +178,13 @@ export function ProgramConfig() {
                 disabled={!isPuntos} 
               />
             </div>
-            <span>gastados en el local, el sistema otorga</span>
-            <div className="relative inline-flex items-center">
-              <input 
-                className="w-24 px-3 py-2 rounded-lg font-display text-lg bg-surface-container-lowest shadow-sm text-center outline-none focus:bg-surface-bright transition text-on-surface" 
-                type="number" 
-                defaultValue="1" 
-                disabled={!isPuntos} 
-              />
-            </div>
-            <span>puntos.</span>
+            <span>gastados en el local, el sistema otorga 1 punto.</span>
           </div>
 
           <div className="flex items-center gap-space-sm p-space-sm px-space-md rounded-xl bg-surface-container-high/60 text-on-surface-variant">
             <Lightbulb className="w-5 h-5 shrink-0 text-outline" />
             <p className="font-sans text-xs">
-              <span className="font-semibold text-on-surface">Ejemplo en POS:</span> Un ticket promedio de <span className="font-mono text-[11px] font-semibold text-on-surface">AR$ 15,000</span> acreditará automáticamente <span className="font-mono text-[11px] font-bold text-secondary">+{Math.floor(15000 / config.pointsPerArs)} pts</span> a la billetera del cliente.
+              <span className="font-semibold text-on-surface">Ejemplo en POS:</span> Un ticket promedio de <span className="font-mono text-[11px] font-semibold text-on-surface">AR$ 15,000</span> acreditará automáticamente <span className="font-mono text-[11px] font-bold text-secondary">+{Math.floor(15000 / (config.pointsPerArs || 1))} pts</span> a la billetera del cliente.
             </p>
           </div>
         </div>

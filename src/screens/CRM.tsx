@@ -183,10 +183,6 @@ export function CRM() {
               <Gift className="w-6 h-6" />
             </div>
           </div>
-          <div className="flex items-center justify-between mt-space-md pt-space-sm bg-surface-container-low/50 rounded-xl px-space-sm py-1.5">
-            <span className="font-sans text-xs text-on-surface-variant font-medium">6 Gaseosas, 2 Descuentos 15%</span>
-            <span className="font-mono text-[11px] text-primary font-semibold">100% stock OK</span>
-          </div>
         </div>
 
         {/* Card 3 */}
@@ -223,11 +219,10 @@ export function CRM() {
             <input 
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-16 py-2.5 rounded-xl bg-surface-container-low text-sm font-sans text-on-surface placeholder:text-outline focus:outline-none focus:bg-surface-container-lowest transition-all" 
-              placeholder="Buscar por DNI o Nombre... [Ctrl+K]" 
+              className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-surface-container-low text-sm font-sans text-on-surface placeholder:text-outline focus:outline-none focus:bg-surface-container-lowest transition-all" 
+              placeholder="Buscar por DNI o Nombre..." 
               type="text" 
             />
-            <kbd className="absolute right-3 top-1/2 -translate-y-1/2 px-1.5 py-0.5 rounded bg-surface-container-high text-on-surface-variant font-mono text-[11px] shadow-sm">Ctrl+K</kbd>
           </div>
           
           {/* Filter Dropdowns */}

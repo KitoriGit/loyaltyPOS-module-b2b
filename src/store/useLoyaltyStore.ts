@@ -15,7 +15,6 @@ export interface ProgramConfig {
   pointsPerArs: number; // Ej: 1 punto cada AR$ 100
   pointsExpirationDays: number;
   // Configuración de Sellos
-  stampsPerTicket: number; // Ej: 1 sello por cada compra mayor a AR$ 5000
   stampsToReward: number; // Ej: 10 sellos para 1 premio
   rewards: Reward[];
 }
@@ -88,7 +87,6 @@ export const useLoyaltyStore = create<LoyaltyState>((set) => ({
     type: 'puntos',
     pointsPerArs: 100, // 1 punto cada $100
     pointsExpirationDays: 365,
-    stampsPerTicket: 5000, // 1 sello cada $5000
     stampsToReward: 10,
     rewards: [
       { id: 'r1', name: 'Gaseosa 500ml', costPoints: 5000, costStamps: 6 },
@@ -110,12 +108,12 @@ export const useLoyaltyStore = create<LoyaltyState>((set) => ({
 
     const customer = state.customers[customerIndex];
     
-    // 2. Calcular recompensas según la configuración
+    // 2. Calcular recompensas según la configuración activa (exclusivas: puntos O sellos)
     const pointsEarned = state.config.type === 'puntos' 
       ? Math.floor(ticketAmount / state.config.pointsPerArs)
       : 0;
       
-    const stampsEarned = state.config.type === 'sellos' && ticketAmount >= state.config.stampsPerTicket
+    const stampsEarned = state.config.type === 'sellos'
       ? 1 
       : 0;
 

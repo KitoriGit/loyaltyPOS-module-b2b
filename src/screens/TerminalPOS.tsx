@@ -72,14 +72,9 @@ export function TerminalPOS() {
 
   const handleProcess = () => {
     if (!activeCustomer) return;
+    if (!ticketAmount || ticketAmount <= 0) return;
     
-    if (isPuntos) {
-      if (!ticketAmount || ticketAmount <= 0) return;
-      processPurchase(activeCustomer.dni, Number(ticketAmount));
-    } else {
-      processPurchase(activeCustomer.dni, config.stampsPerTicket);
-    }
-    
+    processPurchase(activeCustomer.dni, Number(ticketAmount));
     handleClear();
   };
 
@@ -127,7 +122,7 @@ export function TerminalPOS() {
 
         if (document.activeElement === dniInputRef.current) return;
         
-        if (activeCustomer && (!isPuntos || ticketAmount)) {
+        if (activeCustomer && ticketAmount && ticketAmount > 0) {
           e.preventDefault();
           handleProcess();
         }
@@ -359,27 +354,32 @@ export function TerminalPOS() {
 
         {activeCustomer && (
           <div className="flex flex-col gap-space-md">
-            {isPuntos && (
-              <div className="flex flex-col gap-2">
-                <label className="font-sans text-sm font-semibold text-on-surface">Monto del Ticket de Compra (AR$)</label>
-                <div className="relative">
-                  <span className="absolute left-4 top-1/2 -translate-y-1/2 font-mono text-on-surface-variant font-bold">$</span>
-                  <input 
-                    type="number"
-                    value={ticketAmount}
-                    onChange={(e) => setTicketAmount(e.target.value === '' ? '' : Number(e.target.value))}
-                    placeholder="Ej. 15000"
-                    className="w-full bg-surface-container-lowest border border-outline-variant/40 rounded-xl py-3.5 pl-9 pr-4 font-display text-lg font-bold text-on-surface outline-none focus:border-primary transition-colors"
-                  />
-                  {typeof ticketAmount === 'number' && ticketAmount > 0 && (
+            <div className="flex flex-col gap-2">
+              <label className="font-sans text-sm font-semibold text-on-surface">Monto del Ticket de Compra (AR$)</label>
+              <div className="relative">
+                <span className="absolute left-4 top-1/2 -translate-y-1/2 font-mono text-on-surface-variant font-bold">$</span>
+                <input 
+                  type="number"
+                  value={ticketAmount}
+                  onChange={(e) => setTicketAmount(e.target.value === '' ? '' : Number(e.target.value))}
+                  placeholder="Ej. 15000"
+                  className="w-full bg-surface-container-lowest border border-outline-variant/40 rounded-xl py-3.5 pl-9 pr-4 font-display text-lg font-bold text-on-surface outline-none focus:border-primary transition-colors"
+                />
+                {typeof ticketAmount === 'number' && ticketAmount > 0 && (
+                  isPuntos ? (
                     <div className="absolute right-4 top-1/2 -translate-y-1/2 inline-flex items-center gap-1 bg-primary-container text-on-primary-container px-2 py-0.5 rounded-md font-mono text-[11px] font-bold">
                       <ArrowUpCircle className="w-3.5 h-3.5" />
                       +{Math.floor(Number(ticketAmount) / config.pointsPerArs)} pts
                     </div>
-                  )}
-                </div>
+                  ) : (
+                    <div className="absolute right-4 top-1/2 -translate-y-1/2 inline-flex items-center gap-1 bg-secondary-container text-on-secondary-container px-2 py-0.5 rounded-md font-mono text-[11px] font-bold">
+                      <ArrowUpCircle className="w-3.5 h-3.5" />
+                      +1 sello
+                    </div>
+                  )
+                )}
               </div>
-            )}
+            </div>
 
             {isRewardReady && (
               <div className="bg-secondary-container/25 border border-secondary/20 rounded-xl p-4 md:p-5 flex flex-col gap-space-md shadow-sm animate-in fade-in slide-in-from-bottom-4">
@@ -397,7 +397,7 @@ export function TerminalPOS() {
                   </div>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-2">
-                  {availableRewards.map((reward, i) => (
+                  {availableRewards.map((reward) => (
                     <button 
                       key={reward.id} 
                       type="button" 
@@ -427,9 +427,9 @@ export function TerminalPOS() {
           <button 
             type="button" 
             onClick={handleProcess}
-            disabled={!activeCustomer || (isPuntos && !ticketAmount)}
+            disabled={!activeCustomer || !ticketAmount || ticketAmount <= 0}
             className={`w-full font-display text-lg font-bold py-3.5 px-6 rounded-xl shadow-sm flex items-center justify-center gap-3 transition-colors active:scale-[0.99] ${
-              activeCustomer && (!isPuntos || ticketAmount) 
+              activeCustomer && ticketAmount && ticketAmount > 0 
                 ? 'bg-primary hover:bg-primary-container text-on-primary' 
                 : 'bg-surface-container-high text-on-surface-variant/50 cursor-not-allowed'
             }`}
@@ -437,7 +437,9 @@ export function TerminalPOS() {
             <Banknote className="w-5 h-5" />
             <span>
               {isPuntos ? 'Cargar Puntos' : 'Registrar Visita'} 
-              {isSellos && activeCustomer && <span className="font-sans text-sm font-medium ml-1.5 opacity-90">(+1 sello)</span>}
+              {isSellos && activeCustomer && typeof ticketAmount === 'number' && ticketAmount > 0 && (
+                <span className="font-sans text-sm font-medium ml-1.5 opacity-90">(+1 sello)</span>
+              )}
             </span>
             <kbd className="font-mono text-xs px-2.5 py-1 rounded bg-surface-container-lowest/20 text-current font-semibold shadow-inner opacity-80 ml-auto">Enter ↵</kbd>
           </button>
