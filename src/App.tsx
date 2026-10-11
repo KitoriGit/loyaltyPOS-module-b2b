@@ -1,4 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { Toaster } from 'react-hot-toast';
 import { Layout } from './components/Layout';
 import { TerminalPOS } from './screens/TerminalPOS';
 import { ProgramConfig } from './screens/ProgramConfig';
@@ -8,6 +9,7 @@ import { Dashboard } from './screens/Dashboard';
 function App() {
   return (
     <BrowserRouter>
+      <Toaster position="bottom-right" />
       <Layout>
         <Routes>
           <Route path="/" element={<TerminalPOS />} />

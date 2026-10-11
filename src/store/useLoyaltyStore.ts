@@ -71,15 +71,44 @@ const MOCK_CUSTOMERS: Customer[] = [
   { id: 'c10', dni: '31222333', name: 'Martín Torres', points: 0, stamps: 0, tier: 'BRONZE', totalVisits: 0, totalSpent: 0, lastVisitDate: '' },
 ];
 
+const now = Date.now();
+const day = 24 * 60 * 60 * 1000;
+
 const MOCK_TRANSACTIONS: Transaction[] = [
-  { id: 't1', date: new Date().toISOString(), customerId: 'c1', type: 'COMPRA', amount: 15000, pointsChange: 150, stampsChange: 1, hash: '#9dfa2' },
-  { id: 't2', date: new Date(Date.now() - 1000 * 60 * 30).toISOString(), customerId: 'c8', type: 'CANJE', amount: 0, pointsChange: -5000, stampsChange: 0, hash: '#4e21c' },
-  { id: 't3', date: new Date(Date.now() - 1000 * 60 * 60).toISOString(), customerId: 'c4', type: 'COMPRA', amount: 8000, pointsChange: 80, stampsChange: 1, hash: '#1a90e' },
-  { id: 't8', date: new Date(Date.now() - 1000 * 60 * 90).toISOString(), customerId: 'c1', type: 'AJUSTE', amount: 0, pointsChange: 300, stampsChange: 0, hash: '#2x7m9', motive: 'Compensación por queja en pedido' },
-  { id: 't4', date: new Date(Date.now() - 1000 * 60 * 120).toISOString(), customerId: 'c6', type: 'COMPRA', amount: 12000, pointsChange: 120, stampsChange: 1, hash: '#7b3f1' },
-  { id: 't5', date: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString(), customerId: 'c9', type: 'COMPRA', amount: 25000, pointsChange: 250, stampsChange: 1, hash: '#2c8d4' },
-  { id: 't6', date: new Date(Date.now() - 1000 * 60 * 60 * 48).toISOString(), customerId: 'c2', type: 'CANJE', amount: 0, pointsChange: 0, stampsChange: -6, hash: '#5f1e9' },
-  { id: 't7', date: new Date(Date.now() - 1000 * 60 * 60 * 72).toISOString(), customerId: 'c3', type: 'COMPRA', amount: 45000, pointsChange: 450, stampsChange: 1, hash: '#8a4c7' },
+  // Hoy
+  { id: 't1', date: new Date(now - 1000 * 60 * 30).toISOString(), customerId: 'c1', type: 'COMPRA', amount: 125000, pointsChange: 1250, stampsChange: 1, hash: '#9dfa2' },
+  { id: 't2', date: new Date(now - 1000 * 60 * 45).toISOString(), customerId: 'c8', type: 'CANJE', amount: 0, pointsChange: 0, stampsChange: -10, hash: '#4e21c', motive: 'Gaseosa 500ml' },
+  // Hace 1 día
+  { id: 't3', date: new Date(now - day - 1000 * 60 * 60).toISOString(), customerId: 'c4', type: 'COMPRA', amount: 180000, pointsChange: 1800, stampsChange: 1, hash: '#1a90e' },
+  { id: 't8', date: new Date(now - day - 1000 * 60 * 90).toISOString(), customerId: 'c1', type: 'AJUSTE', amount: 0, pointsChange: 300, stampsChange: 0, hash: '#2x7m9', motive: 'Compensación por queja en pedido' },
+  // Hace 2 días
+  { id: 't4', date: new Date(now - 2 * day).toISOString(), customerId: 'c6', type: 'COMPRA', amount: 212000, pointsChange: 2120, stampsChange: 1, hash: '#7b3f1' },
+  { id: 't5', date: new Date(now - 2.5 * day).toISOString(), customerId: 'c9', type: 'COMPRA', amount: 95000, pointsChange: 950, stampsChange: 1, hash: '#2c8d4' },
+  // Hace 3 días
+  { id: 't6', date: new Date(now - 3 * day).toISOString(), customerId: 'c2', type: 'CANJE', amount: 0, pointsChange: -5000, stampsChange: -10, hash: '#5f1e9', motive: 'Gaseosa 500ml' },
+  { id: 't7', date: new Date(now - 3.2 * day).toISOString(), customerId: 'c3', type: 'COMPRA', amount: 450000, pointsChange: 4500, stampsChange: 1, hash: '#8a4c7' },
+  // Hace 5 días
+  { id: 't9', date: new Date(now - 5 * day).toISOString(), customerId: 'c8', type: 'COMPRA', amount: 155000, pointsChange: 1550, stampsChange: 1, hash: '#9c1d2' },
+  // Hace 7 días (1 semana)
+  { id: 't11', date: new Date(now - 7 * day).toISOString(), customerId: 'c1', type: 'COMPRA', amount: 280000, pointsChange: 2800, stampsChange: 1, hash: '#b2c3d' },
+  { id: 't12', date: new Date(now - 7.1 * day).toISOString(), customerId: 'c6', type: 'CANJE', amount: 0, pointsChange: 0, stampsChange: -10, hash: '#c3d4e', motive: 'Gaseosa 500ml' },
+  // Hace 10 días
+  { id: 't13', date: new Date(now - 10 * day).toISOString(), customerId: 'c3', type: 'COMPRA', amount: 320000, pointsChange: 3200, stampsChange: 1, hash: '#d4e5f' },
+  { id: 't14', date: new Date(now - 10.5 * day).toISOString(), customerId: 'c9', type: 'COMPRA', amount: 210000, pointsChange: 2100, stampsChange: 1, hash: '#e5f6a' },
+  // Hace 14 días (2 semanas)
+  { id: 't15', date: new Date(now - 14 * day).toISOString(), customerId: 'c8', type: 'CANJE', amount: 0, pointsChange: -8000, stampsChange: -10, hash: '#f6a7b', motive: 'Docena de Changuito Cookies' },
+  { id: 't16', date: new Date(now - 14.5 * day).toISOString(), customerId: 'c2', type: 'COMPRA', amount: 150000, pointsChange: 1500, stampsChange: 1, hash: '#6a7b8' },
+  // Hace 20 días
+  { id: 't17', date: new Date(now - 20 * day).toISOString(), customerId: 'c4', type: 'COMPRA', amount: 480000, pointsChange: 4800, stampsChange: 1, hash: '#7b8c9' },
+  // Hace 25 días
+  { id: 't19', date: new Date(now - 25 * day).toISOString(), customerId: 'c8', type: 'COMPRA', amount: 620000, pointsChange: 6200, stampsChange: 1, hash: '#c9d0e' },
+  { id: 't20', date: new Date(now - 25.5 * day).toISOString(), customerId: 'c6', type: 'COMPRA', amount: 190000, pointsChange: 1900, stampsChange: 1, hash: '#9d0e1' },
+  // Hace 28 días
+  { id: 't21', date: new Date(now - 28 * day).toISOString(), customerId: 'c3', type: 'COMPRA', amount: 150000, pointsChange: 1500, stampsChange: 0, hash: '#d0e1f' },
+  { id: 't22', date: new Date(now - 28.5 * day).toISOString(), customerId: 'c9', type: 'COMPRA', amount: 280000, pointsChange: 2800, stampsChange: 1, hash: '#0e1f2' },
+  // Hace 30 días
+  { id: 't23', date: new Date(now - 30 * day).toISOString(), customerId: 'c4', type: 'COMPRA', amount: 350000, pointsChange: 3500, stampsChange: 1, hash: '#e1f2a' },
+  { id: 't24', date: new Date(now - 30 * day).toISOString(), customerId: 'c2', type: 'AJUSTE', amount: 0, pointsChange: 500, stampsChange: 0, hash: '#1f2a3', motive: 'Bonificación bienvenida' },
 ];
 
 export const useLoyaltyStore = create<LoyaltyState>((set) => ({
@@ -119,14 +148,14 @@ export const useLoyaltyStore = create<LoyaltyState>((set) => ({
 
     // 3. Crear transacción
     const newTransaction: Transaction = {
-      id: Math.random().toString(36).substring(7),
+      id: crypto.randomUUID(),
       date: new Date().toISOString(),
       customerId: customer.id,
       type: 'COMPRA',
       amount: ticketAmount,
       pointsChange: pointsEarned,
       stampsChange: stampsEarned,
-      hash: '#' + Math.random().toString(16).substring(2, 7)
+      hash: '#' + crypto.randomUUID().substring(0, 5)
     };
 
     // 4. Actualizar cliente
@@ -139,11 +168,12 @@ export const useLoyaltyStore = create<LoyaltyState>((set) => ({
       lastVisitDate: new Date().toISOString()
     };
 
-    const newCustomers = [...state.customers];
-    newCustomers[customerIndex] = updatedCustomer;
+    const updatedCustomers = state.customers.map(c => 
+      c.dni === dni ? updatedCustomer : c
+    );
 
     return {
-      customers: newCustomers,
+      customers: updatedCustomers,
       transactions: [newTransaction, ...state.transactions]
     };
   }),
@@ -156,21 +186,22 @@ export const useLoyaltyStore = create<LoyaltyState>((set) => ({
     if (customer.points < pointsToDeduct) return state;
 
     const newTransaction: Transaction = {
-      id: Math.random().toString(36).substring(7),
+      id: crypto.randomUUID(),
       date: new Date().toISOString(),
       customerId: customer.id,
       type: 'CANJE',
       amount: 0,
       pointsChange: -pointsToDeduct,
       stampsChange: 0,
-      hash: '#' + Math.random().toString(16).substring(2, 7)
+      hash: '#' + crypto.randomUUID().substring(0, 5)
     };
 
-    const newCustomers = [...state.customers];
-    newCustomers[customerIndex] = { ...customer, points: customer.points - pointsToDeduct };
+    const updatedCustomers = state.customers.map(c => 
+      c.dni === dni ? { ...customer, points: customer.points - pointsToDeduct } : c
+    );
 
     return {
-      customers: newCustomers,
+      customers: updatedCustomers,
       transactions: [newTransaction, ...state.transactions]
     };
   }),
@@ -192,29 +223,30 @@ export const useLoyaltyStore = create<LoyaltyState>((set) => ({
     const actualStampsToDeduct = isMaxReward ? maxStampsReward : 0;
 
     const newTransaction: Transaction = {
-      id: Math.random().toString(36).substring(7),
+      id: crypto.randomUUID(),
       date: new Date().toISOString(),
       customerId: customer.id,
       type: 'CANJE',
       amount: 0,
       pointsChange: 0,
       stampsChange: -actualStampsToDeduct,
-      hash: '#' + Math.random().toString(16).substring(2, 7)
+      hash: '#' + crypto.randomUUID().substring(0, 5)
     };
 
     const newClaimedRewards = isMaxReward 
       ? [] 
       : (rewardId ? [...(customer.claimedRewards || []), rewardId] : customer.claimedRewards || []);
 
-    const newCustomers = [...state.customers];
-    newCustomers[customerIndex] = { 
-      ...customer, 
-      stamps: customer.stamps - actualStampsToDeduct,
-      claimedRewards: newClaimedRewards
-    };
+    const updatedCustomers = state.customers.map(c => 
+      c.dni === dni ? { 
+        ...customer, 
+        stamps: customer.stamps - actualStampsToDeduct,
+        claimedRewards: newClaimedRewards
+      } : c
+    );
 
     return {
-      customers: newCustomers,
+      customers: updatedCustomers,
       transactions: [newTransaction, ...state.transactions]
     };
   }),
@@ -226,26 +258,27 @@ export const useLoyaltyStore = create<LoyaltyState>((set) => ({
     const customer = state.customers[customerIndex];
     
     const newTransaction: Transaction = {
-      id: Math.random().toString(36).substring(7),
+      id: crypto.randomUUID(),
       date: new Date().toISOString(),
       customerId: customer.id,
       type: 'AJUSTE',
       amount: 0,
       pointsChange,
       stampsChange,
-      hash: '#' + Math.random().toString(16).substring(2, 7),
+      hash: '#' + crypto.randomUUID().substring(0, 5),
       motive
     };
 
-    const newCustomers = [...state.customers];
-    newCustomers[customerIndex] = { 
-      ...customer, 
-      points: Math.max(0, customer.points + pointsChange),
-      stamps: Math.max(0, customer.stamps + stampsChange)
-    };
+    const updatedCustomers = state.customers.map(c => 
+      c.dni === dni ? { 
+        ...customer, 
+        points: Math.max(0, customer.points + pointsChange),
+        stamps: Math.max(0, customer.stamps + stampsChange)
+      } : c
+    );
 
     return {
-      customers: newCustomers,
+      customers: updatedCustomers,
       transactions: [newTransaction, ...state.transactions]
     };
   })

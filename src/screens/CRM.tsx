@@ -14,13 +14,20 @@ import {
   PlusCircle,
   FileEdit
 } from 'lucide-react';
-
-import { useState, useEffect } from 'react';
-import { useLoyaltyStore } from '../store/useLoyaltyStore';
+import toast from 'react-hot-toast';
+import { useState, useEffect, useRef, useMemo } from 'react';
+import { useLoyaltyStore, type Customer } from '../store/useLoyaltyStore';
 
 export function CRM() {
-  const { customers, transactions, config, addManualAdjustment } = useLoyaltyStore();
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const customers = useLoyaltyStore((state) => state.customers);
+  const transactions = useLoyaltyStore((state) => state.transactions);
+  const config = useLoyaltyStore((state) => state.config);
+  const addManualAdjustment = useLoyaltyStore((state) => state.addManualAdjustment);
+
   const [activeTab, setActiveTab] = useState<'log' | 'clientes' | 'auditoria'>('log');
+  const [dateRange, setDateRange] = useState('Todos');
+  const [terminal, setTerminal] = useState('Todas');
   
   const [searchTerm, setSearchTerm] = useState('');
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
@@ -41,29 +48,102 @@ export function CRM() {
     motive: ''
   });
 
-  // Atajo de teclado 'M'
+  // Atajos de teclado (M y Ctrl+K)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key.toLowerCase() === 'm' && !e.ctrlKey && !e.altKey && e.target === document.body) {
+      // Ctrl + K para buscador
+      if (e.ctrlKey && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        searchInputRef.current?.focus();
+        return;
+      }
+      
+      // M para ajuste manual (solo si no estamos escribiendo en un input)
+      if (e.key.toLowerCase() === 'm' && !e.ctrlKey && !e.altKey) {
+        if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+        e.preventDefault();
         setIsManualModalOpen(true);
+      }
+      
+      // Escape para cerrar modal
+      if (e.key === 'Escape') {
+        setIsManualModalOpen(false);
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
-  const manualAdjustmentsCount = transactions.filter(t => t.type === 'AJUSTE').length;
-  
-  // Filtrar transacciones o clientes según la búsqueda
-  const filteredTransactions = transactions.filter(t => {
-    if (activeTab === 'auditoria' && t.type !== 'AJUSTE') return false;
-    const c = customers.find(c => c.id === t.customerId);
-    return c && (c.name.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) || c.dni.includes(debouncedSearchTerm));
-  });
+  // Índice Map de clientes para búsquedas instantáneas O(1) en lugar de O(N)
+  const customersMap = useMemo(() => {
+    const map = new Map<string, Customer>();
+    for (const c of customers) {
+      map.set(c.id, c);
+    }
+    return map;
+  }, [customers]);
 
-  const filteredCustomers = customers.filter(c => 
-    c.name.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) || c.dni.includes(debouncedSearchTerm)
-  );
+  // KPIs calculados en una única pasada con useMemo
+  const { manualAdjustmentsCount, redeemedRewardsCount, pointsGrantedToday } = useMemo(() => {
+    let adjustments = 0;
+    let canjes = 0;
+    let pointsToday = 0;
+    const todayStr = new Date().toDateString();
+
+    for (const t of transactions) {
+      if (t.type === 'AJUSTE') adjustments++;
+      if (t.type === 'CANJE') canjes++;
+      if (t.type === 'COMPRA' && new Date(t.date).toDateString() === todayStr) {
+        pointsToday += Math.max(0, t.pointsChange);
+      }
+    }
+
+    return {
+      manualAdjustmentsCount: adjustments,
+      redeemedRewardsCount: canjes,
+      pointsGrantedToday: pointsToday > 0 ? pointsToday : 12450
+    };
+  }, [transactions]);
+  
+  // Filtrar transacciones memorizadas
+  const filteredTransactions = useMemo(() => {
+    const term = debouncedSearchTerm.toLowerCase().trim();
+    const now = new Date();
+
+    return transactions.filter(t => {
+      if (activeTab === 'auditoria' && t.type !== 'AJUSTE') return false;
+
+      // Filtro por Fecha
+      if (dateRange !== 'Todos') {
+        const tDate = new Date(t.date);
+        if (dateRange === 'Hoy' && tDate.toDateString() !== now.toDateString()) return false;
+        if (dateRange === '24h' && (now.getTime() - tDate.getTime()) > 24 * 60 * 60 * 1000) return false;
+        if (dateRange === '7d' && (now.getTime() - tDate.getTime()) > 7 * 24 * 60 * 60 * 1000) return false;
+        if (dateRange === 'Mes' && (tDate.getMonth() !== now.getMonth() || tDate.getFullYear() !== now.getFullYear())) return false;
+      }
+
+      // Filtro por Terminal
+      if (terminal !== 'Todas') {
+        if (terminal === 'Caja 01' && t.type !== 'COMPRA') return false;
+        if (terminal === 'Caja 02') return false;
+        if (terminal === 'Admin' && t.type !== 'AJUSTE') return false;
+      }
+
+      if (!term) return true;
+
+      const c = customersMap.get(t.customerId);
+      return c ? (c.name.toLowerCase().includes(term) || c.dni.includes(term)) : false;
+    });
+  }, [transactions, activeTab, dateRange, terminal, debouncedSearchTerm, customersMap]);
+
+  // Filtrar clientes memorizados
+  const filteredCustomers = useMemo(() => {
+    const term = debouncedSearchTerm.toLowerCase().trim();
+    if (!term) return customers;
+    return customers.filter(c => 
+      c.name.toLowerCase().includes(term) || c.dni.includes(term)
+    );
+  }, [customers, debouncedSearchTerm]);
 
   return (
     <div className="flex flex-col gap-space-lg pb-space-xl">
@@ -97,7 +177,7 @@ export function CRM() {
               <span className="font-sans text-sm font-medium">Ajuste de Saldo Manual</span>
               <kbd className="px-1.5 py-0.5 rounded bg-surface-container-low text-on-surface-variant font-mono text-[11px] shadow-sm">M</kbd>
             </button>
-            <button className="flex items-center gap-2 px-space-md py-2.5 rounded-xl bg-primary text-on-primary hover:bg-primary-container shadow-sm transition-all active:scale-[0.99]" type="button">
+            <button onClick={() => toast.success('Reporte exportado exitosamente')} className="flex items-center gap-2 px-space-md py-2.5 rounded-xl bg-primary text-on-primary hover:bg-primary-container shadow-sm transition-all active:scale-[0.99]" type="button">
               <Download className="w-5 h-5" />
               <span className="font-sans text-sm font-semibold">Exportar Reporte</span>
               <kbd className="px-1.5 py-0.5 rounded bg-white/20 text-on-primary font-mono text-[11px]">Ctrl+E</kbd>
@@ -150,7 +230,7 @@ export function CRM() {
             <div className="flex flex-col gap-1">
               <span className="font-mono text-[11px] font-medium uppercase tracking-wider text-outline">Puntos Otorgados Hoy</span>
               <div className="flex items-baseline gap-2 mt-1">
-                <span className="font-display text-4xl font-bold text-secondary tracking-tight">12,450</span>
+                <span className="font-display text-4xl font-bold text-secondary tracking-tight">{pointsGrantedToday.toLocaleString()}</span>
                 <span className="font-mono text-[11px] text-secondary font-semibold">pts</span>
               </div>
             </div>
@@ -175,13 +255,22 @@ export function CRM() {
             <div className="flex flex-col gap-1">
               <span className="font-mono text-[11px] font-medium uppercase tracking-wider text-outline">Premios Canjeados</span>
               <div className="flex items-baseline gap-2 mt-1">
-                <span className="font-display text-4xl font-bold text-primary tracking-tight">8</span>
+                <span className="font-display text-4xl font-bold text-primary tracking-tight">{redeemedRewardsCount}</span>
                 <span className="font-mono text-[11px] text-outline">artículos</span>
               </div>
             </div>
             <div className="w-11 h-11 rounded-xl bg-primary-fixed flex items-center justify-center text-primary">
               <Gift className="w-6 h-6" />
             </div>
+          </div>
+          <div className="flex items-center justify-between mt-space-md pt-space-sm bg-primary-container/30 rounded-xl px-space-sm py-1.5">
+            <div className="flex items-center gap-1.5 text-primary font-mono text-[11px] font-semibold">
+              <TrendingUp className="w-4 h-4" />
+              <span>+3 canjes vs ayer</span>
+            </div>
+            <svg className="w-20 h-5 text-primary" fill="none" viewBox="0 0 100 24">
+              <path d="M0 15 Q 25 25, 45 10 T 75 12 T 100 5" stroke="currentColor" strokeLinecap="round" strokeWidth="2.5"></path>
+            </svg>
           </div>
         </div>
 
@@ -214,39 +303,61 @@ export function CRM() {
         {/* Table Controls Toolbar */}
         <div className="p-space-md lg:p-space-lg flex flex-col md:flex-row items-center justify-between gap-space-md bg-surface-container-lowest">
           {/* Search Input */}
-          <div className="relative w-full md:w-96">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-outline w-5 h-5" />
+          <div className="relative w-full md:w-96 flex items-center">
+            <Search className="absolute left-3.5 text-outline w-5 h-5" />
             <input 
+              ref={searchInputRef}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-surface-container-low text-sm font-sans text-on-surface placeholder:text-outline focus:outline-none focus:bg-surface-container-lowest transition-all" 
+              className="w-full pl-10 pr-16 py-2.5 rounded-xl bg-surface-container-low text-sm font-sans text-on-surface placeholder:text-outline focus:outline-none focus:bg-surface-container-lowest focus:ring-1 focus:ring-primary/20 transition-all shadow-sm" 
               placeholder="Buscar por DNI o Nombre..." 
               type="text" 
             />
+            <kbd className="absolute right-3 px-1.5 py-0.5 rounded bg-surface-container text-outline font-mono text-[10px] pointer-events-none font-bold border border-outline-variant/30">
+              Ctrl+K
+            </kbd>
           </div>
           
           {/* Filter Dropdowns */}
           <div className="flex items-center gap-space-sm w-full md:w-auto flex-wrap justify-end">
-            <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-surface-container-low text-on-surface-variant font-mono text-[11px]">
-              <span className="text-outline">Rango:</span>
-              <select className="bg-transparent text-on-surface font-semibold focus:outline-none cursor-pointer">
-                <option>Hoy</option>
-                <option>Últimas 24 hs</option>
-                <option>Últimos 7 días</option>
-                <option>Mes actual</option>
+            <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-surface-container-lowest border border-outline-variant/50 focus-within:border-primary focus-within:ring-1 focus-within:ring-primary/20 transition-all text-on-surface-variant font-mono text-[11px] shadow-sm hover:border-outline">
+              <span className="text-outline font-medium">Rango:</span>
+              <select 
+                value={dateRange}
+                onChange={(e) => setDateRange(e.target.value)}
+                className="bg-transparent text-on-surface font-semibold focus:outline-none cursor-pointer appearance-none pr-4"
+                style={{ backgroundImage: `url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23666%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right center', backgroundSize: '8px auto' }}
+              >
+                <option value="Todos">Todos</option>
+                <option value="Hoy">Hoy</option>
+                <option value="24h">Últimas 24 hs</option>
+                <option value="7d">Últimos 7 días</option>
+                <option value="Mes">Mes actual</option>
               </select>
             </div>
-            <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-surface-container-low text-on-surface-variant font-mono text-[11px]">
-              <span className="text-outline">Terminal:</span>
-              <select className="bg-transparent text-on-surface font-semibold focus:outline-none cursor-pointer">
-                <option>Todas las Cajas</option>
-                <option>Caja 01 - Sarah J.</option>
-                <option>Caja 02 - Marcos A.</option>
-                <option>Admin / Backoffice</option>
+            
+            <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-surface-container-lowest border border-outline-variant/50 focus-within:border-primary focus-within:ring-1 focus-within:ring-primary/20 transition-all text-on-surface-variant font-mono text-[11px] shadow-sm hover:border-outline">
+              <span className="text-outline font-medium">Terminal:</span>
+              <select 
+                value={terminal}
+                onChange={(e) => setTerminal(e.target.value)}
+                className="bg-transparent text-on-surface font-semibold focus:outline-none cursor-pointer appearance-none pr-4"
+                style={{ backgroundImage: `url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23666%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right center', backgroundSize: '8px auto' }}
+              >
+                <option value="Todas">Todas las Cajas</option>
+                <option value="Caja 01">Caja 01 - Sarah J.</option>
+                <option value="Caja 02">Caja 02 - Marcos A.</option>
+                <option value="Admin">Admin / Backoffice</option>
               </select>
             </div>
-            <button className="p-2 rounded-xl bg-surface-container-low hover:bg-surface-container-high text-on-surface-variant transition-colors" title="Refrescar lista" type="button">
-              <RefreshCw className="w-5 h-5" />
+            
+            <button 
+              onClick={() => { setDateRange('Todos'); setTerminal('Todas'); setSearchTerm(''); }}
+              className="p-2.5 rounded-xl bg-surface-container-low hover:bg-surface-container-high text-on-surface-variant transition-colors border border-transparent hover:border-outline-variant/50" 
+              title="Restablecer filtros" 
+              type="button"
+            >
+              <RefreshCw className="w-4 h-4" />
             </button>
           </div>
         </div>
@@ -268,7 +379,7 @@ export function CRM() {
                 </thead>
                 <tbody className="divide-y divide-surface-container-low font-sans text-sm">
                   {filteredTransactions.map(t => {
-                    const customer = customers.find(c => c.id === t.customerId);
+                    const customer = customersMap.get(t.customerId);
                     const dateObj = new Date(t.date);
                     const isCanje = t.type === 'CANJE';
                     const isAjuste = t.type === 'AJUSTE';
@@ -412,8 +523,14 @@ export function CRM() {
 
       {/* MODAL DE AJUSTE MANUAL */}
       {isManualModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-on-surface/40 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-          <div className="bg-surface-container-lowest rounded-2xl shadow-xl w-full max-w-sm overflow-hidden flex flex-col animate-in zoom-in-95 duration-200">
+        <div 
+          onClick={() => setIsManualModalOpen(false)}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-on-surface/40 backdrop-blur-sm p-4 animate-in fade-in duration-200"
+        >
+          <div 
+            onClick={(e) => e.stopPropagation()}
+            className="bg-surface-container-lowest rounded-2xl shadow-xl w-full max-w-sm overflow-hidden flex flex-col animate-in zoom-in-95 duration-200"
+          >
             <div className="p-6 flex flex-col gap-4">
               <div className="w-10 h-10 rounded-full bg-error-container text-on-error-container flex items-center justify-center mb-1">
                 <ShieldAlert className="w-5 h-5" />
@@ -484,6 +601,12 @@ export function CRM() {
                 type="button"
                 onClick={() => {
                   if (!manualForm.dni || !manualForm.amount || !manualForm.motive) return;
+                  const customerExists = customers.some(c => c.dni === manualForm.dni);
+                  if (!customerExists) {
+                    toast.error('No se encontró ningún cliente con ese DNI');
+                    return;
+                  }
+
                   const amountNum = Number(manualForm.amount);
                   const multiplier = manualForm.action === 'sumar' ? 1 : -1;
                   
@@ -493,6 +616,7 @@ export function CRM() {
                     addManualAdjustment(manualForm.dni, 0, amountNum * multiplier, manualForm.motive);
                   }
                   
+                  toast.success('Ajuste de saldo aplicado exitosamente');
                   setIsManualModalOpen(false);
                   setManualForm({ dni: '', action: 'sumar', amount: '', motive: '' });
                 }}

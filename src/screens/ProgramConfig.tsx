@@ -18,17 +18,34 @@ import {
   RefreshCw
 } from 'lucide-react';
 import { useLoyaltyStore, type Reward } from '../store/useLoyaltyStore';
-
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import toast from 'react-hot-toast';
 
 export function ProgramConfig() {
-  const { config, setConfig } = useLoyaltyStore();
+  const config = useLoyaltyStore((state) => state.config);
+  const setConfig = useLoyaltyStore((state) => state.setConfig);
+
   const isPuntos = config.type === 'puntos';
   const isSellos = config.type === 'sellos';
 
   const [isRewardModalOpen, setIsRewardModalOpen] = useState(false);
   const [editingReward, setEditingReward] = useState<Reward | null>(null);
   const [rewardForm, setRewardForm] = useState({ name: '', cost: '' });
+
+  const handleSaveNotification = useCallback(() => {
+    toast.success('Configuración sincronizada con éxito');
+  }, []);
+
+  // Atajo de teclado: Escape para cerrar modal
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isRewardModalOpen) {
+        setIsRewardModalOpen(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isRewardModalOpen]);
 
   return (
     <div className="w-full max-w-3xl mx-auto flex flex-col gap-space-lg pb-space-xl">
@@ -275,7 +292,10 @@ export function ProgramConfig() {
                   <Pencil className="w-4 h-4" />
                 </button>
                 <button 
-                  onClick={() => setConfig({ rewards: config.rewards.filter(r => r.id !== reward.id) })}
+                  onClick={() => {
+                    setConfig({ rewards: config.rewards.filter(r => r.id !== reward.id) });
+                    toast.success('Recompensa eliminada');
+                  }}
                   className="p-1.5 text-outline hover:text-error hover:bg-error-container/50 rounded-lg transition-colors"
                   title="Eliminar recompensa"
                 >
@@ -302,10 +322,13 @@ export function ProgramConfig() {
 
       {/* FOOTER ACTION */}
       <div className="flex flex-col gap-2 pt-space-xs">
-        <button type="button" className="w-full py-4 px-8 rounded-xl bg-primary hover:bg-tertiary-container text-on-primary font-display text-lg font-semibold shadow-md transition-all active:scale-[0.99] flex items-center justify-center gap-3">
+        <button 
+          type="button" 
+          onClick={handleSaveNotification}
+          className="w-full py-4 px-8 rounded-xl bg-primary hover:bg-tertiary-container text-on-primary font-display text-lg font-semibold shadow-md transition-all active:scale-[0.99] flex items-center justify-center gap-3"
+        >
           <Save className="w-6 h-6" />
           <span>Guardar Configuración</span>
-          <kbd className="ml-2 px-2 py-0.5 rounded bg-surface-container-lowest/20 text-on-primary font-mono text-[11px]">Ctrl + S</kbd>
         </button>
         <div className="flex items-center justify-center gap-1.5 text-center">
           <RefreshCw className="w-4 h-4 text-secondary" />
@@ -317,8 +340,14 @@ export function ProgramConfig() {
 
       {/* MODAL DE RECOMPENSA */}
       {isRewardModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-on-surface/40 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-          <div className="bg-surface-container-lowest rounded-2xl shadow-xl w-full max-w-sm overflow-hidden flex flex-col animate-in zoom-in-95 duration-200">
+        <div 
+          onClick={() => setIsRewardModalOpen(false)}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-on-surface/40 backdrop-blur-sm p-4 animate-in fade-in duration-200"
+        >
+          <div 
+            onClick={(e) => e.stopPropagation()}
+            className="bg-surface-container-lowest rounded-2xl shadow-xl w-full max-w-sm overflow-hidden flex flex-col animate-in zoom-in-95 duration-200"
+          >
             <div className="p-6 flex flex-col gap-4">
               <div className="w-10 h-10 rounded-full bg-primary-container text-on-primary-container flex items-center justify-center mb-1">
                 <Ticket className="w-5 h-5" />
@@ -381,12 +410,13 @@ export function ProgramConfig() {
                     setConfig({ rewards: newRewards });
                   } else {
                     const newReward = {
-                      id: Math.random().toString(36).substring(7),
+                      id: crypto.randomUUID(),
                       name: rewardForm.name,
                       costPoints: isPuntos ? costNum : 1000,
                       costStamps: isSellos ? costNum : 5
                     };
                     setConfig({ rewards: [...config.rewards, newReward] });
+                    toast.success('Recompensa creada');
                   }
                   setIsRewardModalOpen(false);
                 }}

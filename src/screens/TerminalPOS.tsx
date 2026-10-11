@@ -1,4 +1,5 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import toast from 'react-hot-toast';
 import { 
   Touchpad, Store, CheckCircle2, IdCard, Search, X, Star, Clock, Check, 
   Gift, CupSoda, ArrowUpCircle, Banknote, Coins
@@ -6,7 +7,12 @@ import {
 import { useLoyaltyStore, type Reward } from '../store/useLoyaltyStore';
 
 export function TerminalPOS() {
-  const { config, customers, processPurchase, redeemPoints, redeemStamps } = useLoyaltyStore();
+  const config = useLoyaltyStore((state) => state.config);
+  const customers = useLoyaltyStore((state) => state.customers);
+  const processPurchase = useLoyaltyStore((state) => state.processPurchase);
+  const redeemPoints = useLoyaltyStore((state) => state.redeemPoints);
+  const redeemStamps = useLoyaltyStore((state) => state.redeemStamps);
+
   const isPuntos = config.type === 'puntos';
   const isSellos = config.type === 'sellos';
   
@@ -19,19 +25,34 @@ export function TerminalPOS() {
   
   const dniInputRef = useRef<HTMLInputElement>(null);
 
-  const activeCustomer = customers.find(c => c.dni === activeDni);
+  const activeCustomer = useMemo(() => {
+    return customers.find(c => c.dni === activeDni);
+  }, [customers, activeDni]);
   
-  // Lógica de progreso dinámica según el catálogo
-  const nextPuntosReward = config.rewards.slice().sort((a, b) => a.costPoints - b.costPoints).find(r => r.costPoints > (activeCustomer?.points || 0));
-  const nextSellosReward = config.rewards.slice().sort((a, b) => a.costStamps - b.costStamps).find(r => r.costStamps > (activeCustomer?.stamps || 0));
+  // Lógica de progreso dinámica memorizada según el catálogo
+  const { nextPuntosReward, nextSellosReward, targetPoints, targetStamps, maxStampsReward } = useMemo(() => {
+    const sortedPoints = [...config.rewards].sort((a, b) => a.costPoints - b.costPoints);
+    const sortedStamps = [...config.rewards].sort((a, b) => a.costStamps - b.costStamps);
 
-  const targetPoints = nextPuntosReward ? nextPuntosReward.costPoints : (config.rewards.length > 0 ? Math.max(...config.rewards.map(r => r.costPoints)) : 5000);
-  const targetStamps = nextSellosReward ? nextSellosReward.costStamps : (config.rewards.length > 0 ? Math.max(...config.rewards.map(r => r.costStamps)) : config.stampsToReward);
-  const maxStampsReward = config.rewards.length > 0 ? Math.max(...config.rewards.map(r => r.costStamps)) : config.stampsToReward;
+    const nextPts = sortedPoints.find(r => r.costPoints > (activeCustomer?.points || 0));
+    const nextStp = sortedStamps.find(r => r.costStamps > (activeCustomer?.stamps || 0));
+
+    const tPoints = nextPts ? nextPts.costPoints : (config.rewards.length > 0 ? Math.max(...config.rewards.map(r => r.costPoints)) : 5000);
+    const tStamps = nextStp ? nextStp.costStamps : (config.rewards.length > 0 ? Math.max(...config.rewards.map(r => r.costStamps)) : config.stampsToReward);
+    const mStamps = config.rewards.length > 0 ? Math.max(...config.rewards.map(r => r.costStamps)) : config.stampsToReward;
+
+    return {
+      nextPuntosReward: nextPts,
+      nextSellosReward: nextStp,
+      targetPoints: tPoints > 0 ? tPoints : 1, // Prevenir división por cero
+      targetStamps: tStamps > 0 ? tStamps : 1, // Prevenir división por cero
+      maxStampsReward: mStamps > 0 ? mStamps : 1
+    };
+  }, [config.rewards, config.stampsToReward, activeCustomer?.points, activeCustomer?.stamps]);
 
   const displayedStamps = activeCustomer?.stamps || 0;
   
-  const getDaysSinceLastVisit = (dateString?: string) => {
+  const getDaysSinceLastVisit = useCallback((dateString?: string) => {
     if (!dateString) return '-';
     
     const lastVisit = new Date(dateString);
@@ -44,56 +65,66 @@ export function TerminalPOS() {
     
     if (diffDays <= 0) return 'hoy';
     return `hace ${diffDays} día${diffDays > 1 ? 's' : ''}`;
-  };
+  }, []);
   
-  // Recompensas disponibles para este cliente
-  const availableRewards = config.rewards
-    .filter(r => isPuntos ? (activeCustomer?.points || 0) >= r.costPoints : (activeCustomer?.stamps || 0) >= r.costStamps)
-    .filter(r => !(activeCustomer?.claimedRewards || []).includes(r.id))
-    .sort((a, b) => isPuntos ? a.costPoints - b.costPoints : a.costStamps - b.costStamps);
+  // Recompensas disponibles para este cliente memorizadas
+  const availableRewards = useMemo(() => {
+    return config.rewards
+      .filter(r => isPuntos ? (activeCustomer?.points || 0) >= r.costPoints : (activeCustomer?.stamps || 0) >= r.costStamps)
+      .filter(r => !(activeCustomer?.claimedRewards || []).includes(r.id))
+      .sort((a, b) => isPuntos ? a.costPoints - b.costPoints : a.costStamps - b.costStamps);
+  }, [config.rewards, isPuntos, activeCustomer?.points, activeCustomer?.stamps, activeCustomer?.claimedRewards]);
 
   const isRewardReady = availableRewards.length > 0;
 
-  const handleSearch = (e?: React.FormEvent) => {
+  const handleSearch = useCallback((e?: React.FormEvent) => {
     if (e) e.preventDefault();
     if (dniInput.trim()) {
       setActiveDni(dniInput.trim());
       setDniInput('');
       dniInputRef.current?.blur();
     }
-  };
+  }, [dniInput]);
 
-  const handleClear = () => {
+  const handleClear = useCallback(() => {
     setActiveDni('');
     setDniInput('');
     setTicketAmount('');
     dniInputRef.current?.focus();
-  };
+  }, []);
 
-  const handleProcess = () => {
+  const handleProcess = useCallback(() => {
     if (!activeCustomer) return;
     if (!ticketAmount || ticketAmount <= 0) return;
     
     processPurchase(activeCustomer.dni, Number(ticketAmount));
+    if (isPuntos) {
+      const earned = config.pointsPerArs > 0 ? Math.floor(Number(ticketAmount) / config.pointsPerArs) : 0;
+      toast.success(`¡Compra procesada! Se sumaron ${earned.toLocaleString()} puntos.`);
+    } else {
+      toast.success('¡Visita registrada! Se sumó 1 sello a la tarjeta.');
+    }
     handleClear();
-  };
+  }, [activeCustomer, ticketAmount, processPurchase, isPuntos, config.pointsPerArs, handleClear]);
 
-  const handleRedeemClick = (reward: Reward) => {
+  const handleRedeemClick = useCallback((reward: Reward) => {
     setSelectedReward(reward);
     setIsRedeemModalOpen(true);
-  };
+  }, []);
 
-  const handleConfirmRedeem = () => {
+  const handleConfirmRedeem = useCallback(() => {
     if (!activeCustomer || !selectedReward) return;
     if (isPuntos) {
       redeemPoints(activeCustomer.dni, selectedReward.costPoints);
+      toast.success(`¡Canje exitoso! Se descontaron ${selectedReward.costPoints.toLocaleString()} pts.`);
     }
     if (isSellos) {
       redeemStamps(activeCustomer.dni, selectedReward.costStamps, selectedReward.id);
+      toast.success(`¡Premio canjeado con éxito! (${selectedReward.name})`);
     }
     setIsRedeemModalOpen(false);
     setSelectedReward(null);
-  };
+  }, [activeCustomer, selectedReward, isPuntos, isSellos, redeemPoints, redeemStamps]);
 
   // Keyboard Shortcuts
   useEffect(() => {
@@ -369,7 +400,7 @@ export function TerminalPOS() {
                   isPuntos ? (
                     <div className="absolute right-4 top-1/2 -translate-y-1/2 inline-flex items-center gap-1 bg-primary-container text-on-primary-container px-2 py-0.5 rounded-md font-mono text-[11px] font-bold">
                       <ArrowUpCircle className="w-3.5 h-3.5" />
-                      +{Math.floor(Number(ticketAmount) / config.pointsPerArs)} pts
+                      +{config.pointsPerArs > 0 ? Math.floor(Number(ticketAmount) / config.pointsPerArs) : 0} pts
                     </div>
                   ) : (
                     <div className="absolute right-4 top-1/2 -translate-y-1/2 inline-flex items-center gap-1 bg-secondary-container text-on-secondary-container px-2 py-0.5 rounded-md font-mono text-[11px] font-bold">
