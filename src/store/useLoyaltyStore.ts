@@ -1,285 +1,1012 @@
 import { create } from 'zustand';
+import { supabase } from '../lib/supabase';
+import { useAuthStore } from './useAuthStore';
+import toast from 'react-hot-toast';
 
 export type ProgramType = 'puntos' | 'sellos';
+export type TierType = 'BRONZE' | 'SILVER' | 'GOLD';
+
+export const TIER_RANKS: Record<TierType, number> = {
+  BRONZE: 1,
+  SILVER: 2,
+  GOLD: 3,
+};
+
+export const TIER_LABELS: Record<TierType, string> = {
+  BRONZE: 'Bronze',
+  SILVER: 'Plata',
+  GOLD: 'Oro',
+};
+
+/**
+ * Valida si un cliente con cierto nivel jerárquico puede canjear una recompensa.
+ * Jerarquía acumulativa: Oro accede a Oro, Plata y Bronze; Plata a Plata y Bronze; Bronze a Bronze.
+ */
+export function canClaimReward(customerTier: TierType = 'BRONZE', rewardMinTier: TierType = 'BRONZE'): boolean {
+  return TIER_RANKS[customerTier] >= TIER_RANKS[rewardMinTier];
+}
+
+export interface TierConfig {
+  inactivityDaysDowngrade: number; // Días sin visitas/compras antes de degradar nivel (ej: 45)
+  // Configuración de Tiers para Programa de Puntos
+  silverVisitsThreshold: number; // Visitas para alcanzar Plata en puntos (ej: 10)
+  goldVisitsThreshold: number; // Visitas para alcanzar Oro en puntos (ej: 25)
+  doublePointsEnabled: boolean; // Si compras superiores a un monto duplican los puntos
+  doublePointsMinSpend: number; // Monto mínimo para duplicar puntos (ej: AR$ 20.000)
+  // Configuración de Tiers para Programa de Sellos
+  silverCardsThreshold: number; // Tarjetas completadas para alcanzar Plata en sellos (ej: 1)
+  goldCardsThreshold: number; // Tarjetas completadas para alcanzar Oro en sellos (ej: 2)
+  doubleStampEnabled: boolean; // Si compras superiores a un monto otorgan 2 sellos
+  doubleStampMinSpend: number; // Monto mínimo para ganar 2 sellos (ej: AR$ 15.000)
+}
 
 export interface Reward {
   id: string;
   name: string;
   costPoints: number;
   costStamps: number;
+  minTier?: TierType;
 }
 
 export interface ProgramConfig {
   type: ProgramType;
-  // Configuración de Puntos
-  pointsPerArs: number; // Ej: 1 punto cada AR$ 100
+  spendAmount: number;
+  pointsAwarded: number;
+  pointsPerArs?: number;
   pointsExpirationDays: number;
-  // Configuración de Sellos
-  stampsToReward: number; // Ej: 10 sellos para 1 premio
+  stampsToReward: number;
+  welcomeBonusEnabled?: boolean;
+  welcomeBonusPoints?: number;
   rewards: Reward[];
+  tierConfig: TierConfig;
 }
 
 export interface Customer {
   id: string;
   dni: string;
   name: string;
+  email?: string;
+  phone?: string;
+  userId?: string;
   points: number;
   stamps: number;
-  tier: 'BRONZE' | 'SILVER' | 'GOLD';
+  tier: TierType;
+  manualTierOverride?: boolean;
   totalVisits: number;
+  completedCards: number; // Cantidad de tarjetas completadas en sellos
   totalSpent: number;
   lastVisitDate: string;
   claimedRewards?: string[];
+  isRegistered?: boolean;
 }
 
 export interface Transaction {
   id: string;
   date: string;
   customerId: string;
+  branchId?: string;
+  employeeId?: string;
+  rewardId?: string;
   type: 'COMPRA' | 'CANJE' | 'AJUSTE';
-  amount: number; // Dinero gastado
-  pointsChange: number; // Puntos sumados o restados
-  stampsChange: number; // Sellos sumados
+  amount: number;
+  pointsChange: number;
+  stampsChange: number;
   hash: string;
-  motive?: string; // Motivo para ajustes manuales
+  motive?: string;
+}
+
+export interface ProcessPurchaseResult {
+  pointsEarned: number;
+  stampsEarned: number;
+  previousTier: TierType;
+  newTier: TierType;
+  upgradedTier: boolean;
+  isDoubleStamp?: boolean;
+  isDoublePoints?: boolean;
+}
+
+/**
+ * Calcula el nivel efectivo de un cliente evaluando:
+ * 1. Override manual del comercio
+ * 2. Umbral de visitas acumuladas
+ * 3. Regla de degradación por inactividad
+ */
+/**
+ * Calcula el nivel efectivo de un cliente evaluando:
+ * 1. Override manual del comercio
+ * 2. Mecánica según modalidad:
+ *    - Puntos: Umbral de visitas acumuladas (visitas a Plata / Oro)
+ *    - Sellos: Umbral de tarjetas completadas (tarjetas a Plata / Oro)
+ * 3. Regla de degradación por inactividad
+ */
+export function calculateCustomerTier(
+  customer: Pick<Customer, 'totalVisits' | 'lastVisitDate' | 'manualTierOverride' | 'tier'> & { completedCards?: number },
+  tierConfig: TierConfig,
+  programType: ProgramType = 'puntos'
+): {
+  effectiveTier: TierType;
+  baseTier: TierType;
+  isDowngraded: boolean;
+  isAtRisk: boolean;
+  daysInactive: number;
+} {
+  let daysInactive = 0;
+  if (customer.lastVisitDate) {
+    const last = new Date(customer.lastVisitDate).getTime();
+    daysInactive = Math.max(0, Math.floor((Date.now() - last) / (1000 * 60 * 60 * 24)));
+  }
+
+  if (customer.manualTierOverride) {
+    return {
+      effectiveTier: customer.tier,
+      baseTier: customer.tier,
+      isDowngraded: false,
+      isAtRisk: false,
+      daysInactive,
+    };
+  }
+
+  let baseTier: TierType = 'BRONZE';
+  if (programType === 'sellos') {
+    const cards = customer.completedCards || 0;
+    if (cards >= (tierConfig.goldCardsThreshold ?? 2)) {
+      baseTier = 'GOLD';
+    } else if (cards >= (tierConfig.silverCardsThreshold ?? 1)) {
+      baseTier = 'SILVER';
+    }
+  } else {
+    // Programa de puntos: basado en visitas acumuladas
+    if (customer.totalVisits >= tierConfig.goldVisitsThreshold) {
+      baseTier = 'GOLD';
+    } else if (customer.totalVisits >= tierConfig.silverVisitsThreshold) {
+      baseTier = 'SILVER';
+    }
+  }
+
+  let effectiveTier = baseTier;
+  let isDowngraded = false;
+
+  if (daysInactive > tierConfig.inactivityDaysDowngrade) {
+    if (baseTier === 'GOLD') {
+      effectiveTier = daysInactive > tierConfig.inactivityDaysDowngrade * 2 ? 'BRONZE' : 'SILVER';
+      isDowngraded = true;
+    } else if (baseTier === 'SILVER') {
+      effectiveTier = 'BRONZE';
+      isDowngraded = true;
+    }
+  }
+
+  const isAtRisk =
+    !isDowngraded &&
+    effectiveTier !== 'BRONZE' &&
+    daysInactive >= Math.max(1, tierConfig.inactivityDaysDowngrade - 10);
+
+  return {
+    effectiveTier,
+    baseTier,
+    isDowngraded,
+    isAtRisk,
+    daysInactive,
+  };
 }
 
 interface LoyaltyState {
   config: ProgramConfig;
   customers: Customer[];
   transactions: Transaction[];
-  
+  isLoadingData: boolean;
+
   // Acciones
+  fetchInitialData: (workspaceId: string) => Promise<void>;
+  saveConfigToDb: () => Promise<boolean>;
   setConfig: (config: Partial<ProgramConfig>) => void;
-  processPurchase: (dni: string, ticketAmount: number) => void;
-  redeemPoints: (dni: string, pointsToDeduct: number) => void;
-  redeemStamps: (dni: string, stampsToDeduct: number, rewardId?: string) => void;
-  addManualAdjustment: (dni: string, pointsChange: number, stampsChange?: number, motive?: string) => void;
+  setTierConfig: (tierConfig: Partial<TierConfig>) => void;
+  addReward: (reward: Omit<Reward, 'id'>) => Promise<void>;
+  updateReward: (id: string, reward: Partial<Reward>) => Promise<void>;
+  deleteReward: (id: string) => Promise<void>;
+  updateCustomerTier: (dni: string, tier: TierType, isManual?: boolean) => Promise<void>;
+  processPurchase: (dni: string, ticketAmount: number) => ProcessPurchaseResult | null;
+  redeemPoints: (dni: string, pointsToDeduct: number, rewardId?: string) => Promise<void>;
+  redeemStamps: (dni: string, stampsToDeduct: number, rewardId?: string) => Promise<void>;
+  addManualAdjustment: (dni: string, pointsChange: number, stampsChange?: number, motive?: string) => Promise<void>;
 }
 
-// Datos de prueba iniciales basados en los mockups
-const MOCK_CUSTOMERS: Customer[] = [
-  { id: 'c1', dni: '34567890', name: 'Juan Pérez', points: 1500, stamps: 3, tier: 'BRONZE', totalVisits: 5, totalSpent: 45000, lastVisitDate: new Date().toISOString() },
-  { id: 'c2', dni: '29111222', name: 'Laura Gómez', points: 450, stamps: 9, tier: 'SILVER', totalVisits: 12, totalSpent: 120000, lastVisitDate: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString() },
-  { id: 'c3', dni: '28450119', name: 'Carlos Rodríguez', points: 5200, stamps: 1, tier: 'GOLD', totalVisits: 25, totalSpent: 350000, lastVisitDate: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString() },
-  { id: 'c4', dni: '40123456', name: 'Sofía Martínez', points: 8500, stamps: 14, tier: 'GOLD', totalVisits: 42, totalSpent: 520000, lastVisitDate: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString() },
-  { id: 'c5', dni: '38765432', name: 'Diego Fernández', points: 120, stamps: 0, tier: 'BRONZE', totalVisits: 1, totalSpent: 12000, lastVisitDate: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000).toISOString() },
-  { id: 'c6', dni: '35111222', name: 'Ana López', points: 3400, stamps: 5, tier: 'SILVER', totalVisits: 15, totalSpent: 185000, lastVisitDate: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString() },
-  { id: 'c7', dni: '42333444', name: 'Lucas Silva', points: 900, stamps: 2, tier: 'BRONZE', totalVisits: 3, totalSpent: 32000, lastVisitDate: new Date(Date.now() - 8 * 24 * 60 * 60 * 1000).toISOString() },
-  { id: 'c8', dni: '27555666', name: 'María Gonzalez', points: 16500, stamps: 15, tier: 'GOLD', totalVisits: 60, totalSpent: 850000, lastVisitDate: new Date().toISOString() },
-  { id: 'c9', dni: '39888999', name: 'Julieta Romero', points: 4200, stamps: 7, tier: 'SILVER', totalVisits: 18, totalSpent: 210000, lastVisitDate: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString() },
-  { id: 'c10', dni: '31222333', name: 'Martín Torres', points: 0, stamps: 0, tier: 'BRONZE', totalVisits: 0, totalSpent: 0, lastVisitDate: '' },
-];
+const DEFAULT_TIER_CONFIG: TierConfig = {
+  silverVisitsThreshold: 10,
+  goldVisitsThreshold: 25,
+  doublePointsEnabled: true,
+  doublePointsMinSpend: 20000,
+  silverCardsThreshold: 1,
+  goldCardsThreshold: 2,
+  doubleStampEnabled: true,
+  doubleStampMinSpend: 15000,
+  inactivityDaysDowngrade: 45,
+};
 
-const now = Date.now();
-const day = 24 * 60 * 60 * 1000;
-
-const MOCK_TRANSACTIONS: Transaction[] = [
-  // Hoy
-  { id: 't1', date: new Date(now - 1000 * 60 * 30).toISOString(), customerId: 'c1', type: 'COMPRA', amount: 125000, pointsChange: 1250, stampsChange: 1, hash: '#9dfa2' },
-  { id: 't2', date: new Date(now - 1000 * 60 * 45).toISOString(), customerId: 'c8', type: 'CANJE', amount: 0, pointsChange: 0, stampsChange: -10, hash: '#4e21c', motive: 'Gaseosa 500ml' },
-  // Hace 1 día
-  { id: 't3', date: new Date(now - day - 1000 * 60 * 60).toISOString(), customerId: 'c4', type: 'COMPRA', amount: 180000, pointsChange: 1800, stampsChange: 1, hash: '#1a90e' },
-  { id: 't8', date: new Date(now - day - 1000 * 60 * 90).toISOString(), customerId: 'c1', type: 'AJUSTE', amount: 0, pointsChange: 300, stampsChange: 0, hash: '#2x7m9', motive: 'Compensación por queja en pedido' },
-  // Hace 2 días
-  { id: 't4', date: new Date(now - 2 * day).toISOString(), customerId: 'c6', type: 'COMPRA', amount: 212000, pointsChange: 2120, stampsChange: 1, hash: '#7b3f1' },
-  { id: 't5', date: new Date(now - 2.5 * day).toISOString(), customerId: 'c9', type: 'COMPRA', amount: 95000, pointsChange: 950, stampsChange: 1, hash: '#2c8d4' },
-  // Hace 3 días
-  { id: 't6', date: new Date(now - 3 * day).toISOString(), customerId: 'c2', type: 'CANJE', amount: 0, pointsChange: -5000, stampsChange: -10, hash: '#5f1e9', motive: 'Gaseosa 500ml' },
-  { id: 't7', date: new Date(now - 3.2 * day).toISOString(), customerId: 'c3', type: 'COMPRA', amount: 450000, pointsChange: 4500, stampsChange: 1, hash: '#8a4c7' },
-  // Hace 5 días
-  { id: 't9', date: new Date(now - 5 * day).toISOString(), customerId: 'c8', type: 'COMPRA', amount: 155000, pointsChange: 1550, stampsChange: 1, hash: '#9c1d2' },
-  // Hace 7 días (1 semana)
-  { id: 't11', date: new Date(now - 7 * day).toISOString(), customerId: 'c1', type: 'COMPRA', amount: 280000, pointsChange: 2800, stampsChange: 1, hash: '#b2c3d' },
-  { id: 't12', date: new Date(now - 7.1 * day).toISOString(), customerId: 'c6', type: 'CANJE', amount: 0, pointsChange: 0, stampsChange: -10, hash: '#c3d4e', motive: 'Gaseosa 500ml' },
-  // Hace 10 días
-  { id: 't13', date: new Date(now - 10 * day).toISOString(), customerId: 'c3', type: 'COMPRA', amount: 320000, pointsChange: 3200, stampsChange: 1, hash: '#d4e5f' },
-  { id: 't14', date: new Date(now - 10.5 * day).toISOString(), customerId: 'c9', type: 'COMPRA', amount: 210000, pointsChange: 2100, stampsChange: 1, hash: '#e5f6a' },
-  // Hace 14 días (2 semanas)
-  { id: 't15', date: new Date(now - 14 * day).toISOString(), customerId: 'c8', type: 'CANJE', amount: 0, pointsChange: -8000, stampsChange: -10, hash: '#f6a7b', motive: 'Docena de Changuito Cookies' },
-  { id: 't16', date: new Date(now - 14.5 * day).toISOString(), customerId: 'c2', type: 'COMPRA', amount: 150000, pointsChange: 1500, stampsChange: 1, hash: '#6a7b8' },
-  // Hace 20 días
-  { id: 't17', date: new Date(now - 20 * day).toISOString(), customerId: 'c4', type: 'COMPRA', amount: 480000, pointsChange: 4800, stampsChange: 1, hash: '#7b8c9' },
-  // Hace 25 días
-  { id: 't19', date: new Date(now - 25 * day).toISOString(), customerId: 'c8', type: 'COMPRA', amount: 620000, pointsChange: 6200, stampsChange: 1, hash: '#c9d0e' },
-  { id: 't20', date: new Date(now - 25.5 * day).toISOString(), customerId: 'c6', type: 'COMPRA', amount: 190000, pointsChange: 1900, stampsChange: 1, hash: '#9d0e1' },
-  // Hace 28 días
-  { id: 't21', date: new Date(now - 28 * day).toISOString(), customerId: 'c3', type: 'COMPRA', amount: 150000, pointsChange: 1500, stampsChange: 0, hash: '#d0e1f' },
-  { id: 't22', date: new Date(now - 28.5 * day).toISOString(), customerId: 'c9', type: 'COMPRA', amount: 280000, pointsChange: 2800, stampsChange: 1, hash: '#0e1f2' },
-  // Hace 30 días
-  { id: 't23', date: new Date(now - 30 * day).toISOString(), customerId: 'c4', type: 'COMPRA', amount: 350000, pointsChange: 3500, stampsChange: 1, hash: '#e1f2a' },
-  { id: 't24', date: new Date(now - 30 * day).toISOString(), customerId: 'c2', type: 'AJUSTE', amount: 0, pointsChange: 500, stampsChange: 0, hash: '#1f2a3', motive: 'Bonificación bienvenida' },
-];
-
-export const useLoyaltyStore = create<LoyaltyState>((set) => ({
+export const useLoyaltyStore = create<LoyaltyState>((set, get) => ({
   config: {
     type: 'puntos',
-    pointsPerArs: 100, // 1 punto cada $100
+    spendAmount: 100,
+    pointsAwarded: 20,
+    pointsPerArs: 100,
     pointsExpirationDays: 365,
     stampsToReward: 10,
-    rewards: [
-      { id: 'r1', name: 'Gaseosa 500ml', costPoints: 5000, costStamps: 6 },
-      { id: 'r2', name: 'Docena de Changuito Cookies', costPoints: 8000, costStamps: 10 },
-      { id: 'r3', name: 'Cena para dos personas', costPoints: 15000, costStamps: 15 }
-    ]
+    rewards: [],
+    tierConfig: DEFAULT_TIER_CONFIG,
   },
-  customers: MOCK_CUSTOMERS,
-  transactions: MOCK_TRANSACTIONS,
+  customers: [],
+  transactions: [],
+  isLoadingData: false,
 
-  setConfig: (newConfig) => set((state) => ({
-    config: { ...state.config, ...newConfig }
-  })),
+  fetchInitialData: async (workspaceId: string) => {
+    if (!workspaceId) return;
+    set({ isLoadingData: true });
 
-  processPurchase: (dni, ticketAmount) => set((state) => {
-    // 1. Buscar al cliente
-    const customerIndex = state.customers.findIndex(c => c.dni === dni);
-    if (customerIndex === -1) return state; // En producción, aquí crearíamos el cliente
+    try {
+      // 1. Cargar Configuración del Programa
+      const { data: dbConfig } = await supabase
+        .from('loyalty_configs')
+        .select('*')
+        .eq('workspace_id', workspaceId)
+        .maybeSingle();
 
-    const customer = state.customers[customerIndex];
-    
-    // 2. Calcular recompensas según la configuración activa (exclusivas: puntos O sellos)
-    const pointsEarned = state.config.type === 'puntos' 
-      ? Math.floor(ticketAmount / state.config.pointsPerArs)
-      : 0;
-      
-    const stampsEarned = state.config.type === 'sellos'
-      ? 1 
-      : 0;
+      let activeConfig = get().config;
 
-    // 3. Crear transacción
+      if (dbConfig) {
+        activeConfig = {
+          type: (dbConfig.program_type as ProgramType) || 'puntos',
+          spendAmount: Number(dbConfig.spend_amount) || 100,
+          pointsAwarded: Number(dbConfig.points_awarded) || 20,
+          pointsPerArs: Number(dbConfig.spend_amount) || 100,
+          pointsExpirationDays: Number(dbConfig.points_expiration_days) || 365,
+          stampsToReward: Number(dbConfig.stamps_to_reward) || 10,
+          rewards: [],
+          tierConfig: {
+            silverVisitsThreshold: Number(dbConfig.silver_visits_threshold) || 10,
+            goldVisitsThreshold: Number(dbConfig.gold_visits_threshold) || 25,
+            doublePointsEnabled: dbConfig.double_points_enabled ?? true,
+            doublePointsMinSpend: Number(dbConfig.double_points_min_spend) || 20000,
+            silverCardsThreshold: Number(dbConfig.silver_cards_threshold) ?? 1,
+            goldCardsThreshold: Number(dbConfig.gold_cards_threshold) ?? 2,
+            doubleStampEnabled: dbConfig.double_stamp_enabled ?? true,
+            doubleStampMinSpend: Number(dbConfig.double_stamp_min_spend) || 15000,
+            inactivityDaysDowngrade: Number(dbConfig.inactivity_days_downgrade) || 45,
+          },
+        };
+      } else {
+        // Inicializar configuración inicial por defecto en la BD
+        const { data: createdConfig } = await supabase
+          .from('loyalty_configs')
+          .insert({
+            workspace_id: workspaceId,
+            program_type: 'puntos',
+            spend_amount: 100,
+            points_awarded: 20,
+            points_expiration_days: 365,
+            stamps_to_reward: 10,
+            welcome_bonus_enabled: true,
+            welcome_bonus_points: 500,
+            silver_visits_threshold: 10,
+            gold_visits_threshold: 25,
+            double_points_enabled: true,
+            double_points_min_spend: 20000,
+            silver_cards_threshold: 1,
+            gold_cards_threshold: 2,
+            double_stamp_enabled: true,
+            double_stamp_min_spend: 15000,
+            inactivity_days_downgrade: 45,
+          })
+          .select()
+          .maybeSingle();
+
+        if (createdConfig) {
+          activeConfig = {
+            ...activeConfig,
+            spendAmount: Number(createdConfig.spend_amount),
+            pointsAwarded: Number(createdConfig.points_awarded),
+          };
+        }
+      }
+
+
+      // 2. Cargar Recompensas (vacías por defecto si el negocio es nuevo)
+      const { data: dbRewards } = await supabase
+        .from('loyalty_rewards')
+        .select('*')
+        .eq('workspace_id', workspaceId)
+        .eq('is_active', true)
+        .order('cost_points', { ascending: true });
+
+      const rewardsList: Reward[] = (dbRewards || []).map((r: any) => ({
+        id: r.id,
+        name: r.name,
+        costPoints: Number(r.cost_points) || 0,
+        costStamps: Number(r.cost_stamps) || 0,
+        minTier: (r.min_tier as TierType) || 'BRONZE',
+      }));
+
+      activeConfig.rewards = rewardsList;
+
+      // 3. Cargar Clientes
+      const { data: dbCustomers } = await supabase
+        .from('loyalty_customers')
+        .select('*')
+        .eq('workspace_id', workspaceId)
+        .order('created_at', { ascending: false });
+
+      const customersList: Customer[] = (dbCustomers || []).map((c: any) => ({
+        id: c.id,
+        dni: c.dni,
+        name: c.name,
+        points: Number(c.points) || 0,
+        stamps: Number(c.stamps) || 0,
+        tier: (c.tier as TierType) || 'BRONZE',
+        manualTierOverride: c.manual_tier_override || false,
+        totalVisits: Number(c.total_visits) || 0,
+        completedCards: Number(c.completed_cards) || 0,
+        totalSpent: Number(c.total_spent) || 0,
+        lastVisitDate: c.last_visit_date || '',
+        claimedRewards: Array.isArray(c.claimed_rewards) ? c.claimed_rewards : [],
+        isRegistered: c.is_registered ?? false,
+      }));
+
+      // 4. Cargar Transacciones
+      const { data: dbTransactions } = await supabase
+        .from('loyalty_transactions')
+        .select('*')
+        .eq('workspace_id', workspaceId)
+        .order('created_at', { ascending: false })
+        .limit(100);
+
+      const transactionsList: Transaction[] = (dbTransactions || []).map((t: any) => ({
+        id: t.id,
+        date: t.created_at,
+        customerId: t.customer_id,
+        type: t.type,
+        amount: Number(t.amount) || 0,
+        pointsChange: Number(t.points_change) || 0,
+        stampsChange: Number(t.stamps_change) || 0,
+        hash: t.hash || '#00000',
+        motive: t.motive || undefined,
+      }));
+
+      set({
+        config: activeConfig,
+        customers: customersList,
+        transactions: transactionsList,
+        isLoadingData: false,
+      });
+    } catch (err) {
+      console.error('Error cargando datos de fidelidad desde Supabase:', err);
+      set({ isLoadingData: false });
+    }
+  },
+
+  saveConfigToDb: async () => {
+    const wsId = useAuthStore.getState().workspaceId;
+    if (!wsId) return false;
+
+    const { config } = get();
+    try {
+      const { error } = await supabase
+        .from('loyalty_configs')
+        .upsert(
+          {
+            workspace_id: wsId,
+            program_type: config.type,
+            spend_amount: config.spendAmount,
+            points_awarded: config.pointsAwarded,
+            points_expiration_days: config.pointsExpirationDays,
+            stamps_to_reward: config.stampsToReward,
+            silver_visits_threshold: config.tierConfig.silverVisitsThreshold,
+            gold_visits_threshold: config.tierConfig.goldVisitsThreshold,
+            double_points_enabled: config.tierConfig.doublePointsEnabled,
+            double_points_min_spend: config.tierConfig.doublePointsMinSpend,
+            silver_cards_threshold: config.tierConfig.silverCardsThreshold,
+            gold_cards_threshold: config.tierConfig.goldCardsThreshold,
+            double_stamp_enabled: config.tierConfig.doubleStampEnabled,
+            double_stamp_min_spend: config.tierConfig.doubleStampMinSpend,
+            inactivity_days_downgrade: config.tierConfig.inactivityDaysDowngrade,
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: 'workspace_id' }
+        );
+
+      if (error) throw error;
+      toast.success('Configuración guardada en la base de datos');
+      return true;
+    } catch (err: any) {
+      console.error('Error guardando configuración:', err);
+      toast.error('Error al guardar configuración: ' + (err.message || ''));
+      return false;
+    }
+  },
+
+  setConfig: (newConfig) => {
+    set((state) => ({
+      config: { ...state.config, ...newConfig },
+    }));
+  },
+
+  setTierConfig: (newTierConfig) => {
+    set((state) => {
+      const updatedTierConfig = { ...state.config.tierConfig, ...newTierConfig };
+      const updatedCustomers = state.customers.map((c) => {
+        if (c.manualTierOverride) return c;
+        const { effectiveTier } = calculateCustomerTier(c, updatedTierConfig, state.config.type);
+        return { ...c, tier: effectiveTier };
+      });
+
+      return {
+        config: {
+          ...state.config,
+          tierConfig: updatedTierConfig,
+        },
+        customers: updatedCustomers,
+      };
+    });
+  },
+
+  addReward: async (rewardData) => {
+    const wsId = useAuthStore.getState().workspaceId;
+    const tempId = crypto.randomUUID();
+
+    // Actualización optimista
+    set((state) => ({
+      config: {
+        ...state.config,
+        rewards: [
+          ...state.config.rewards,
+          {
+            ...rewardData,
+            id: tempId,
+            minTier: rewardData.minTier || 'BRONZE',
+          },
+        ],
+      },
+    }));
+
+    if (wsId) {
+      try {
+        const { data, error } = await supabase
+          .from('loyalty_rewards')
+          .insert({
+            workspace_id: wsId,
+            name: rewardData.name,
+            cost_points: rewardData.costPoints,
+            cost_stamps: rewardData.costStamps,
+            min_tier: rewardData.minTier || 'BRONZE',
+            is_active: true,
+          })
+          .select()
+          .single();
+
+        if (error) throw error;
+        if (data) {
+          // Reemplazar tempId por ID real
+          set((state) => ({
+            config: {
+              ...state.config,
+              rewards: state.config.rewards.map((r) => (r.id === tempId ? { ...r, id: data.id } : r)),
+            },
+          }));
+        }
+      } catch (err) {
+        console.error('Error agregando recompensa en DB:', err);
+      }
+    }
+  },
+
+  updateReward: async (id, rewardData) => {
+    set((state) => ({
+      config: {
+        ...state.config,
+        rewards: state.config.rewards.map((r) => (r.id === id ? { ...r, ...rewardData } : r)),
+      },
+    }));
+
+    try {
+      const updatePayload: Record<string, any> = {};
+      if (rewardData.name !== undefined) updatePayload.name = rewardData.name;
+      if (rewardData.costPoints !== undefined) updatePayload.cost_points = rewardData.costPoints;
+      if (rewardData.costStamps !== undefined) updatePayload.cost_stamps = rewardData.costStamps;
+      if (rewardData.minTier !== undefined) updatePayload.min_tier = rewardData.minTier;
+
+      await supabase.from('loyalty_rewards').update(updatePayload).eq('id', id);
+    } catch (err) {
+      console.error('Error actualizando recompensa en DB:', err);
+    }
+  },
+
+  deleteReward: async (id) => {
+    set((state) => ({
+      config: {
+        ...state.config,
+        rewards: state.config.rewards.filter((r) => r.id !== id),
+      },
+    }));
+
+    try {
+      await supabase.from('loyalty_rewards').update({ is_active: false }).eq('id', id);
+    } catch (err) {
+      console.error('Error eliminando recompensa en DB:', err);
+    }
+  },
+
+  updateCustomerTier: async (dni, newTier, isManual = true) => {
+    const wsId = useAuthStore.getState().workspaceId;
+
+    set((state) => ({
+      customers: state.customers.map((c) =>
+        c.dni === dni ? { ...c, tier: newTier, manualTierOverride: isManual } : c
+      ),
+    }));
+
+    if (wsId) {
+      try {
+        await supabase
+          .from('loyalty_customers')
+          .update({
+            tier: newTier,
+            manual_tier_override: isManual,
+          })
+          .eq('workspace_id', wsId)
+          .eq('dni', dni);
+      } catch (err) {
+        console.error('Error actualizando tier en DB:', err);
+      }
+    }
+  },
+
+  processPurchase: (dni, ticketAmount) => {
+    const state = get();
+    const wsId = useAuthStore.getState().workspaceId;
+    const employeeId = useAuthStore.getState().employeeId;
+    const branch = useAuthStore.getState().currentBranch;
+
+    const customerIndex = state.customers.findIndex((c) => c.dni === dni);
+    const existingCustomer = customerIndex !== -1 ? state.customers[customerIndex] : null;
+    const currentTier = existingCustomer ? existingCustomer.tier : 'BRONZE';
+
+    const spendBase = state.config.spendAmount || state.config.pointsPerArs || 100;
+    const ptsAwarded = state.config.pointsAwarded ?? 1;
+    const rawPoints =
+      state.config.type === 'puntos' && spendBase > 0
+        ? Math.floor((ticketAmount / spendBase) * ptsAwarded)
+        : 0;
+
+    // Acelerador de puntos: 2x puntos si el ticket supera el monto mínimo configurado
+    const isDoublePoints =
+      state.config.type === 'puntos' &&
+      state.config.tierConfig.doublePointsEnabled &&
+      ticketAmount >= state.config.tierConfig.doublePointsMinSpend;
+    const pointsMultiplier = isDoublePoints ? 2 : 1;
+    const pointsEarned = rawPoints * pointsMultiplier;
+
+    // Acelerador de sellos: 2 sellos si el ticket supera el monto mínimo configurado
+    const isDoubleStamp =
+      state.config.type === 'sellos' &&
+      state.config.tierConfig.doubleStampEnabled &&
+      ticketAmount >= state.config.tierConfig.doubleStampMinSpend;
+    const stampsEarned = state.config.type === 'sellos' ? (isDoubleStamp ? 2 : 1) : 0;
+
+    const txHash = '#' + Math.random().toString(36).substring(2, 7);
+    const newTxId = crypto.randomUUID();
+    const txDate = new Date().toISOString();
+
+    let result: ProcessPurchaseResult = {
+      pointsEarned,
+      stampsEarned,
+      previousTier: currentTier,
+      newTier: currentTier,
+      upgradedTier: false,
+      isDoubleStamp,
+      isDoublePoints,
+    };
+
+    if (!existingCustomer) {
+      const newCustomerId = crypto.randomUUID();
+      const initialTier: TierType = 'BRONZE';
+
+      const newCustomer: Customer = {
+        id: newCustomerId,
+        dni,
+        name: `Cliente #${dni}`,
+        points: pointsEarned,
+        stamps: stampsEarned,
+        tier: initialTier,
+        totalVisits: 1,
+        completedCards: 0,
+        totalSpent: ticketAmount,
+        lastVisitDate: txDate,
+        isRegistered: false,
+      };
+
+      const newTransaction: Transaction = {
+        id: newTxId,
+        date: txDate,
+        customerId: newCustomerId,
+        type: 'COMPRA',
+        amount: ticketAmount,
+        pointsChange: pointsEarned,
+        stampsChange: stampsEarned,
+        hash: txHash,
+      };
+
+      result.newTier = initialTier;
+
+      set({
+        customers: [newCustomer, ...state.customers],
+        transactions: [newTransaction, ...state.transactions],
+      });
+
+      // Persistir asíncronamente en Supabase
+      if (wsId) {
+        (async () => {
+          try {
+            const { data: insertedCust, error: custErr } = await supabase
+              .from('loyalty_customers')
+              .insert({
+                workspace_id: wsId,
+                dni,
+                name: `Cliente #${dni}`,
+                points: pointsEarned,
+                stamps: stampsEarned,
+                tier: initialTier,
+                total_visits: 1,
+                completed_cards: 0,
+                total_spent: ticketAmount,
+                last_visit_date: txDate,
+                is_registered: false,
+              })
+              .select()
+              .single();
+
+            if (custErr) throw custErr;
+
+            const finalCustId = insertedCust ? insertedCust.id : newCustomerId;
+            await supabase.from('loyalty_transactions').insert({
+              workspace_id: wsId,
+              customer_id: finalCustId,
+              branch_id: branch?.id || null,
+              employee_id: employeeId || null,
+              type: 'COMPRA',
+              amount: ticketAmount,
+              points_change: pointsEarned,
+              stamps_change: stampsEarned,
+              hash: txHash,
+            });
+          } catch (err) {
+            console.error('Error sincronizando nueva compra en Supabase:', err);
+          }
+        })();
+      }
+
+      return result;
+    }
+
+    // Cliente existente
+    const updatedVisits = existingCustomer.totalVisits + 1;
+    const updatedSpent = existingCustomer.totalSpent + ticketAmount;
+    const updatedVisitDate = txDate;
+
+    const { effectiveTier } = calculateCustomerTier(
+      {
+        totalVisits: updatedVisits,
+        completedCards: existingCustomer.completedCards,
+        lastVisitDate: updatedVisitDate,
+        manualTierOverride: existingCustomer.manualTierOverride,
+        tier: existingCustomer.tier,
+      },
+      state.config.tierConfig,
+      state.config.type
+    );
+
+    const upgradedTier = TIER_RANKS[effectiveTier] > TIER_RANKS[currentTier];
+
+    result = {
+      pointsEarned,
+      stampsEarned,
+      previousTier: currentTier,
+      newTier: effectiveTier,
+      upgradedTier,
+      isDoubleStamp,
+      isDoublePoints,
+    };
+
     const newTransaction: Transaction = {
-      id: crypto.randomUUID(),
-      date: new Date().toISOString(),
-      customerId: customer.id,
+      id: newTxId,
+      date: txDate,
+      customerId: existingCustomer.id,
       type: 'COMPRA',
       amount: ticketAmount,
       pointsChange: pointsEarned,
       stampsChange: stampsEarned,
-      hash: '#' + crypto.randomUUID().substring(0, 5)
+      hash: txHash,
     };
 
-    // 4. Actualizar cliente
-    const updatedCustomer = {
-      ...customer,
-      points: customer.points + pointsEarned,
-      stamps: customer.stamps + stampsEarned,
-      totalVisits: customer.totalVisits + 1,
-      totalSpent: customer.totalSpent + ticketAmount,
-      lastVisitDate: new Date().toISOString()
+    const updatedCustomer: Customer = {
+      ...existingCustomer,
+      points: existingCustomer.points + pointsEarned,
+      stamps: existingCustomer.stamps + stampsEarned,
+      totalVisits: updatedVisits,
+      totalSpent: updatedSpent,
+      lastVisitDate: updatedVisitDate,
+      tier: effectiveTier,
     };
 
-    const updatedCustomers = state.customers.map(c => 
-      c.dni === dni ? updatedCustomer : c
-    );
+    set({
+      customers: state.customers.map((c) => (c.dni === dni ? updatedCustomer : c)),
+      transactions: [newTransaction, ...state.transactions],
+    });
 
-    return {
-      customers: updatedCustomers,
-      transactions: [newTransaction, ...state.transactions]
-    };
-  }),
+    // Persistir asíncronamente en Supabase
+    if (wsId) {
+      (async () => {
+        try {
+          await supabase
+            .from('loyalty_customers')
+            .update({
+              points: updatedCustomer.points,
+              stamps: updatedCustomer.stamps,
+              total_visits: updatedVisits,
+              total_spent: updatedSpent,
+              last_visit_date: updatedVisitDate,
+              tier: effectiveTier,
+            })
+            .eq('id', existingCustomer.id);
 
-  redeemPoints: (dni, pointsToDeduct) => set((state) => {
-    const customerIndex = state.customers.findIndex(c => c.dni === dni);
-    if (customerIndex === -1) return state;
-    
+          await supabase.from('loyalty_transactions').insert({
+            workspace_id: wsId,
+            customer_id: existingCustomer.id,
+            branch_id: branch?.id || null,
+            employee_id: employeeId || null,
+            type: 'COMPRA',
+            amount: ticketAmount,
+            points_change: pointsEarned,
+            stamps_change: stampsEarned,
+            hash: txHash,
+          });
+        } catch (err) {
+          console.error('Error sincronizando compra en Supabase:', err);
+        }
+      })();
+    }
+
+    return result;
+  },
+
+  redeemPoints: async (dni, pointsToDeduct, rewardId) => {
+    const state = get();
+    const wsId = useAuthStore.getState().workspaceId;
+    const employeeId = useAuthStore.getState().employeeId;
+    const branch = useAuthStore.getState().currentBranch;
+
+    const customerIndex = state.customers.findIndex((c) => c.dni === dni);
+    if (customerIndex === -1) return;
+
     const customer = state.customers[customerIndex];
-    if (customer.points < pointsToDeduct) return state;
+    if (customer.points < pointsToDeduct) return;
+
+    const txHash = '#' + Math.random().toString(36).substring(2, 7);
+    const txDate = new Date().toISOString();
 
     const newTransaction: Transaction = {
       id: crypto.randomUUID(),
-      date: new Date().toISOString(),
+      date: txDate,
       customerId: customer.id,
+      branchId: branch?.id,
+      employeeId: employeeId || undefined,
+      rewardId: rewardId,
       type: 'CANJE',
       amount: 0,
       pointsChange: -pointsToDeduct,
       stampsChange: 0,
-      hash: '#' + crypto.randomUUID().substring(0, 5)
+      hash: txHash,
     };
 
-    const updatedCustomers = state.customers.map(c => 
-      c.dni === dni ? { ...customer, points: customer.points - pointsToDeduct } : c
-    );
+    const newPoints = customer.points - pointsToDeduct;
 
-    return {
-      customers: updatedCustomers,
-      transactions: [newTransaction, ...state.transactions]
-    };
-  }),
+    set({
+      customers: state.customers.map((c) => (c.dni === dni ? { ...customer, points: newPoints } : c)),
+      transactions: [newTransaction, ...state.transactions],
+    });
 
-  redeemStamps: (dni, stampsToDeduct, rewardId) => set((state) => {
-    const customerIndex = state.customers.findIndex(c => c.dni === dni);
-    if (customerIndex === -1) return state;
-    
+    if (wsId) {
+      try {
+        await supabase
+          .from('loyalty_customers')
+          .update({ points: newPoints })
+          .eq('id', customer.id);
+
+        await supabase.from('loyalty_transactions').insert({
+          workspace_id: wsId,
+          customer_id: customer.id,
+          branch_id: branch?.id || null,
+          employee_id: employeeId || null,
+          reward_id: rewardId || null,
+          type: 'CANJE',
+          amount: 0,
+          points_change: -pointsToDeduct,
+          stamps_change: 0,
+          hash: txHash,
+        });
+      } catch (err) {
+        console.error('Error guardando canje de puntos en DB:', err);
+      }
+    }
+  },
+
+  redeemStamps: async (dni, stampsToDeduct, rewardId) => {
+    const state = get();
+    const wsId = useAuthStore.getState().workspaceId;
+    const employeeId = useAuthStore.getState().employeeId;
+    const branch = useAuthStore.getState().currentBranch;
+
+    const customerIndex = state.customers.findIndex((c) => c.dni === dni);
+    if (customerIndex === -1) return;
+
     const customer = state.customers[customerIndex];
-    if (customer.stamps < stampsToDeduct) return state;
+    if (customer.stamps < stampsToDeduct) return;
 
-    // Determinar cuál es la recompensa máxima (el límite de la tarjeta)
-    const maxStampsReward = state.config.rewards.length > 0 
-      ? Math.max(...state.config.rewards.map(r => r.costStamps))
-      : state.config.stampsToReward;
+    const maxStampsReward =
+      state.config.rewards.length > 0
+        ? Math.max(...state.config.rewards.map((r) => r.costStamps))
+        : state.config.stampsToReward;
 
-    // Solo se restan los sellos si se está canjeando la recompensa máxima
     const isMaxReward = stampsToDeduct >= maxStampsReward;
     const actualStampsToDeduct = isMaxReward ? maxStampsReward : 0;
+    const newStamps = customer.stamps - actualStampsToDeduct;
+    const newCompletedCards = isMaxReward
+      ? (customer.completedCards || 0) + 1
+      : (customer.completedCards || 0);
+
+    const { effectiveTier } = calculateCustomerTier(
+      {
+        totalVisits: customer.totalVisits,
+        completedCards: newCompletedCards,
+        lastVisitDate: customer.lastVisitDate,
+        manualTierOverride: customer.manualTierOverride,
+        tier: customer.tier,
+      },
+      state.config.tierConfig,
+      state.config.type
+    );
+
+    const txHash = '#' + Math.random().toString(36).substring(2, 7);
+    const txDate = new Date().toISOString();
 
     const newTransaction: Transaction = {
       id: crypto.randomUUID(),
-      date: new Date().toISOString(),
+      date: txDate,
       customerId: customer.id,
+      branchId: branch?.id,
+      employeeId: employeeId || undefined,
+      rewardId: rewardId,
       type: 'CANJE',
       amount: 0,
       pointsChange: 0,
       stampsChange: -actualStampsToDeduct,
-      hash: '#' + crypto.randomUUID().substring(0, 5)
+      hash: txHash,
     };
 
-    const newClaimedRewards = isMaxReward 
-      ? [] 
-      : (rewardId ? [...(customer.claimedRewards || []), rewardId] : customer.claimedRewards || []);
+    const newClaimedRewards = isMaxReward
+      ? []
+      : rewardId
+      ? [...(customer.claimedRewards || []), rewardId]
+      : customer.claimedRewards || [];
 
-    const updatedCustomers = state.customers.map(c => 
-      c.dni === dni ? { 
-        ...customer, 
-        stamps: customer.stamps - actualStampsToDeduct,
-        claimedRewards: newClaimedRewards
-      } : c
-    );
+    set({
+      customers: state.customers.map((c) =>
+        c.dni === dni
+          ? {
+              ...customer,
+              stamps: newStamps,
+              completedCards: newCompletedCards,
+              tier: effectiveTier,
+              claimedRewards: newClaimedRewards,
+            }
+          : c
+      ),
+      transactions: [newTransaction, ...state.transactions],
+    });
 
-    return {
-      customers: updatedCustomers,
-      transactions: [newTransaction, ...state.transactions]
-    };
-  }),
+    if (wsId) {
+      try {
+        await supabase
+          .from('loyalty_customers')
+          .update({
+            stamps: newStamps,
+            completed_cards: newCompletedCards,
+            tier: effectiveTier,
+            claimed_rewards: newClaimedRewards,
+          })
+          .eq('id', customer.id);
 
-  addManualAdjustment: (dni, pointsChange, stampsChange = 0, motive?: string) => set((state) => {
-    const customerIndex = state.customers.findIndex(c => c.dni === dni);
-    if (customerIndex === -1) return state;
-    
+        await supabase.from('loyalty_transactions').insert({
+          workspace_id: wsId,
+          customer_id: customer.id,
+          branch_id: branch?.id || null,
+          employee_id: employeeId || null,
+          reward_id: rewardId || null,
+          type: 'CANJE',
+          amount: 0,
+          points_change: 0,
+          stamps_change: -actualStampsToDeduct,
+          hash: txHash,
+        });
+      } catch (err) {
+        console.error('Error guardando canje de sellos en DB:', err);
+      }
+    }
+  },
+
+  addManualAdjustment: async (dni, pointsChange, stampsChange = 0, motive) => {
+    const state = get();
+    const wsId = useAuthStore.getState().workspaceId;
+    const employeeId = useAuthStore.getState().employeeId;
+    const branch = useAuthStore.getState().currentBranch;
+
+    const customerIndex = state.customers.findIndex((c) => c.dni === dni);
+    if (customerIndex === -1) return;
+
     const customer = state.customers[customerIndex];
-    
+    const newPoints = Math.max(0, customer.points + pointsChange);
+    const newStamps = Math.max(0, customer.stamps + stampsChange);
+
+    const txHash = '#' + Math.random().toString(36).substring(2, 7);
+    const txDate = new Date().toISOString();
+
     const newTransaction: Transaction = {
       id: crypto.randomUUID(),
-      date: new Date().toISOString(),
+      date: txDate,
       customerId: customer.id,
       type: 'AJUSTE',
       amount: 0,
       pointsChange,
       stampsChange,
-      hash: '#' + crypto.randomUUID().substring(0, 5),
-      motive
+      hash: txHash,
+      motive,
     };
 
-    const updatedCustomers = state.customers.map(c => 
-      c.dni === dni ? { 
-        ...customer, 
-        points: Math.max(0, customer.points + pointsChange),
-        stamps: Math.max(0, customer.stamps + stampsChange)
-      } : c
-    );
+    set({
+      customers: state.customers.map((c) =>
+        c.dni === dni
+          ? {
+              ...customer,
+              points: newPoints,
+              stamps: newStamps,
+            }
+          : c
+      ),
+      transactions: [newTransaction, ...state.transactions],
+    });
 
-    return {
-      customers: updatedCustomers,
-      transactions: [newTransaction, ...state.transactions]
-    };
-  })
+    if (wsId) {
+      try {
+        await supabase
+          .from('loyalty_customers')
+          .update({
+            points: newPoints,
+            stamps: newStamps,
+          })
+          .eq('id', customer.id);
+
+        await supabase.from('loyalty_transactions').insert({
+          workspace_id: wsId,
+          customer_id: customer.id,
+          branch_id: branch?.id || null,
+          employee_id: employeeId || null,
+          type: 'AJUSTE',
+          amount: 0,
+          points_change: pointsChange,
+          stamps_change: stampsChange,
+          hash: txHash,
+          motive: motive || null,
+        });
+      } catch (err) {
+        console.error('Error guardando ajuste manual en DB:', err);
+      }
+    }
+  },
 }));

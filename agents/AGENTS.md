@@ -2,7 +2,7 @@
 
 Eres un agente desarrollando un módulo que forma parte de un ecosistema B2B (Business to Business) más grande. Este proyecto NO es una aplicación aislada, es un "Micro-frontend" que comparte bases de datos y diseño con otros módulos. 
 
-Antes de proponer soluciones o escribir código, debes seguir estrictamente estas reglas:
+Antes de proponer soluciones o escribir código, debes leer el README.md para empaparte del proyecto y seguir estrictamente estas reglas:
 
 ## 1. Stack Tecnológico (Estricto)
 - **Frontend:** React + TypeScript (Vite).
@@ -39,11 +39,17 @@ Antes de proponer soluciones o escribir código, debes seguir estrictamente esta
 ## 5. Regla de Oro sobre Dependencias
 Este es un proyecto ágil y de alta performance. **No instales librerías de terceros pesadas** para cosas que podemos construir con React y Tailwind Grid/Flexbox (ej. No instalar `react-big-calendar` para grillas, ni librerías de Drag & Drop a menos que sea estrictamente indispensable y autorizado).
 
-## 6. Actualización de base de datos
-PROHIBIDO modificar la base de datos desde este proyecto. Si se requiere agregar tablas o modificar columnas, NO intentes generar scripts SQL aquí. 
-Tu tarea es facilitar la transición:
-1. Indícale al usuario que abra el proyecto `"C:\Users\alegr\programación\ecosistema_database"` en su IDE.
-2. Redacta un "Prompt de Traspaso" claro y detallado en un bloque de código para que el usuario simplemente lo copie y se lo pegue al agente de ese nuevo workspace. Este prompt debe incluir qué tablas modificar, el tipo de datos exacto de las nuevas columnas y el contexto de negocio que origina el cambio.
+## 6. Actualización de Base de Datos
+Tienes acceso directo de lectura y escritura a la carpeta central del ecosistema: `"C:\Users\alegr\programación\ecosistema_database"`.
+
+Cuando se requiera agregar nuevas tablas, campos o modificar la estructura de la base de datos para este módulo:
+1. **Generar la Migración SQL:**
+   - Crea un nuevo archivo `.sql` en `"C:\Users\alegr\programación\ecosistema_database\supabase_queries"` respetando la correlatividad numérica existente (ej: `003_create_loyalty_module_tables.sql`).
+   - El script debe contener: creación de tablas, columnas `workspace_id`, índices, habilitación obligatoria de Row Level Security (`ALTER TABLE ... ENABLE ROW LEVEL SECURITY;`) y las políticas RLS correspondientes (`is_workspace_owner`, `is_workspace_employee`, etc.).
+2. **Actualizar la Documentación del Schema:**
+   - Modifica directamente el archivo central `"C:\Users\alegr\programación\ecosistema_database\schemas\global_database_schema.md"`, agregando la nueva sección del módulo con sus tablas, columnas, relaciones y notas de seguridad.
+3. **Instrucciones al Usuario:**
+   - Notifícale al usuario el nombre del archivo SQL generado para que simplemente copie su contenido y lo ejecute en el SQL Editor del panel de Supabase.
 
 ---
 **Tu objetivo:** Escribir código limpio, modular y que encaje perfectamente con el resto del ecosistema como una pieza de Lego, respetando la seguridad Multi-tenant.

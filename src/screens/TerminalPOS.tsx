@@ -2,9 +2,17 @@ import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import toast from 'react-hot-toast';
 import { 
   Touchpad, Store, CheckCircle2, IdCard, Search, X, Star, Clock, Check, 
-  Gift, CupSoda, ArrowUpCircle, Banknote, Coins
+  Gift, CupSoda, ArrowUpCircle, Banknote, Coins, UserPlus, Sparkles, QrCode,
+  Crown, Zap, Lock, AlertTriangle, ShieldCheck
 } from 'lucide-react';
-import { useLoyaltyStore, type Reward } from '../store/useLoyaltyStore';
+import { 
+  useLoyaltyStore, 
+  type Reward, 
+  canClaimReward, 
+  TIER_LABELS, 
+  TIER_RANKS,
+  calculateCustomerTier 
+} from '../store/useLoyaltyStore';
 
 export function TerminalPOS() {
   const config = useLoyaltyStore((state) => state.config);
@@ -17,7 +25,7 @@ export function TerminalPOS() {
   const isSellos = config.type === 'sellos';
   
   const [dniInput, setDniInput] = useState('');
-  const [activeDni, setActiveDni] = useState('34567890'); // Cargamos un cliente por defecto para demo
+  const [activeDni, setActiveDni] = useState('');
   const [ticketAmount, setTicketAmount] = useState<number | ''>('');
   
   const [isRedeemModalOpen, setIsRedeemModalOpen] = useState(false);
@@ -28,6 +36,93 @@ export function TerminalPOS() {
   const activeCustomer = useMemo(() => {
     return customers.find(c => c.dni === activeDni);
   }, [customers, activeDni]);
+
+  const isNewCustomer = Boolean(activeDni && !activeCustomer);
+
+  // Evaluación de estado de Tier del cliente (inactividad, alertas y progreso)
+  const tierStatus = useMemo(() => {
+    if (!activeCustomer) return null;
+    return calculateCustomerTier(activeCustomer, config.tierConfig, config.type);
+  }, [activeCustomer, config.tierConfig, config.type]);
+
+  // Progreso hacia el siguiente nivel de cliente
+  const nextTierProgress = useMemo(() => {
+    if (!activeCustomer) return null;
+    const currentTier = activeCustomer.tier;
+
+    if (isSellos) {
+      const { silverCardsThreshold = 1, goldCardsThreshold = 2 } = config.tierConfig;
+      const cards = activeCustomer.completedCards || 0;
+
+      if (currentTier === 'BRONZE') {
+        const remaining = Math.max(0, silverCardsThreshold - cards);
+        const percent = Math.min(100, Math.round((cards / silverCardsThreshold) * 100));
+        return {
+          nextTierLabel: 'Plata',
+          remainingUnits: remaining,
+          unitLabel: remaining === 1 ? 'tarjeta completa' : 'tarjetas completas',
+          percent,
+          isMax: false,
+        };
+      }
+
+      if (currentTier === 'SILVER') {
+        const remaining = Math.max(0, goldCardsThreshold - cards);
+        const percent = Math.min(100, Math.round((cards / goldCardsThreshold) * 100));
+        return {
+          nextTierLabel: 'Oro VIP',
+          remainingUnits: remaining,
+          unitLabel: remaining === 1 ? 'tarjeta completa' : 'tarjetas completas',
+          percent,
+          isMax: false,
+        };
+      }
+
+      return {
+        nextTierLabel: 'Máximo',
+        remainingUnits: 0,
+        unitLabel: '',
+        percent: 100,
+        isMax: true,
+      };
+    }
+
+    // Modo Puntos: basado en visitas acumuladas
+    const { silverVisitsThreshold, goldVisitsThreshold } = config.tierConfig;
+    const visits = activeCustomer.totalVisits;
+
+    if (currentTier === 'BRONZE') {
+      const remaining = Math.max(0, silverVisitsThreshold - visits);
+      const percent = Math.min(100, Math.round((visits / silverVisitsThreshold) * 100));
+      return {
+        nextTierLabel: 'Plata',
+        remainingUnits: remaining,
+        unitLabel: remaining === 1 ? 'visita' : 'visitas',
+        percent,
+        isMax: false,
+      };
+    }
+
+    if (currentTier === 'SILVER') {
+      const remaining = Math.max(0, goldVisitsThreshold - visits);
+      const percent = Math.min(100, Math.round((visits / goldVisitsThreshold) * 100));
+      return {
+        nextTierLabel: 'Oro VIP',
+        remainingUnits: remaining,
+        unitLabel: remaining === 1 ? 'visita' : 'visitas',
+        percent,
+        isMax: false,
+      };
+    }
+
+    return {
+      nextTierLabel: 'Máximo',
+      remainingUnits: 0,
+      unitLabel: '',
+      percent: 100,
+      isMax: true,
+    };
+  }, [activeCustomer, config.tierConfig, isSellos]);
   
   // Lógica de progreso dinámica memorizada según el catálogo
   const { nextPuntosReward, nextSellosReward, targetPoints, targetStamps, maxStampsReward } = useMemo(() => {
@@ -44,8 +139,8 @@ export function TerminalPOS() {
     return {
       nextPuntosReward: nextPts,
       nextSellosReward: nextStp,
-      targetPoints: tPoints > 0 ? tPoints : 1, // Prevenir división por cero
-      targetStamps: tStamps > 0 ? tStamps : 1, // Prevenir división por cero
+      targetPoints: tPoints > 0 ? tPoints : 1,
+      targetStamps: tStamps > 0 ? tStamps : 1,
       maxStampsReward: mStamps > 0 ? mStamps : 1
     };
   }, [config.rewards, config.stampsToReward, activeCustomer?.points, activeCustomer?.stamps]);
@@ -67,13 +162,23 @@ export function TerminalPOS() {
     return `hace ${diffDays} día${diffDays > 1 ? 's' : ''}`;
   }, []);
   
-  // Recompensas disponibles para este cliente memorizadas
+  // Recompensas disponibles para este cliente memorizadas (validando el tier jerárquico)
   const availableRewards = useMemo(() => {
+    if (!activeCustomer) return [];
     return config.rewards
-      .filter(r => isPuntos ? (activeCustomer?.points || 0) >= r.costPoints : (activeCustomer?.stamps || 0) >= r.costStamps)
-      .filter(r => !(activeCustomer?.claimedRewards || []).includes(r.id))
+      .filter(r => canClaimReward(activeCustomer.tier, r.minTier || 'BRONZE'))
+      .filter(r => isPuntos ? (activeCustomer.points || 0) >= r.costPoints : (activeCustomer.stamps || 0) >= r.costStamps)
+      .filter(r => !(activeCustomer.claimedRewards || []).includes(r.id))
       .sort((a, b) => isPuntos ? a.costPoints - b.costPoints : a.costStamps - b.costStamps);
-  }, [config.rewards, isPuntos, activeCustomer?.points, activeCustomer?.stamps, activeCustomer?.claimedRewards]);
+  }, [config.rewards, isPuntos, activeCustomer]);
+
+  // Recompensas exclusivas de niveles superiores bloqueadas para incentivar retención en caja
+  const lockedTierRewards = useMemo(() => {
+    if (!activeCustomer) return [];
+    return config.rewards
+      .filter(r => !canClaimReward(activeCustomer.tier, r.minTier || 'BRONZE'))
+      .sort((a, b) => (TIER_RANKS[a.minTier || 'BRONZE'] - TIER_RANKS[b.minTier || 'BRONZE']));
+  }, [config.rewards, activeCustomer]);
 
   const isRewardReady = availableRewards.length > 0;
 
@@ -94,18 +199,42 @@ export function TerminalPOS() {
   }, []);
 
   const handleProcess = useCallback(() => {
-    if (!activeCustomer) return;
+    const dniToProcess = activeCustomer ? activeCustomer.dni : activeDni;
+    if (!dniToProcess) return;
     if (!ticketAmount || ticketAmount <= 0) return;
     
-    processPurchase(activeCustomer.dni, Number(ticketAmount));
+    const result = processPurchase(dniToProcess, Number(ticketAmount));
+    
+    // Si subió de nivel, notificación destacada de celebración
+    if (result?.upgradedTier) {
+      toast.success(
+        `🎉 ¡Felicitaciones! ${activeCustomer?.name || 'El cliente'} acaba de ascender a Nivel ${TIER_LABELS[result.newTier].toUpperCase()}!`,
+        { duration: 6000 }
+      );
+    }
+
     if (isPuntos) {
-      const earned = config.pointsPerArs > 0 ? Math.floor(Number(ticketAmount) / config.pointsPerArs) : 0;
-      toast.success(`¡Compra procesada! Se sumaron ${earned.toLocaleString()} puntos.`);
+      const doubleBonusText = result?.isDoublePoints
+        ? ` (⚡ ¡Doble puntos por ticket mayor a AR$ ${(config.tierConfig.doublePointsMinSpend || 20000).toLocaleString()}!)`
+        : '';
+      if (isNewCustomer) {
+        toast.success(`¡Cliente nuevo registrado! Se sumaron ${result?.pointsEarned.toLocaleString()} pts al DNI ${dniToProcess}${doubleBonusText}.`);
+      } else {
+        toast.success(`¡Compra procesada! Se sumaron +${result?.pointsEarned.toLocaleString()} pts${doubleBonusText}.`);
+      }
     } else {
-      toast.success('¡Visita registrada! Se sumó 1 sello a la tarjeta.');
+      const stampCount = result?.stampsEarned || 1;
+      const doubleBonusText = result?.isDoubleStamp
+        ? ` (⚡ ¡Doble sello por ticket mayor a AR$ ${(config.tierConfig.doubleStampMinSpend || 15000).toLocaleString()}!)`
+        : '';
+      if (isNewCustomer) {
+        toast.success(`¡Primer visita registrada! Se sumaron ${stampCount} sello${stampCount > 1 ? 's' : ''} al DNI ${dniToProcess}${doubleBonusText}.`);
+      } else {
+        toast.success(`¡Visita registrada! Se sumaron +${stampCount} sello${stampCount > 1 ? 's' : ''} a la tarjeta${doubleBonusText}.`);
+      }
     }
     handleClear();
-  }, [activeCustomer, ticketAmount, processPurchase, isPuntos, config.pointsPerArs, handleClear]);
+  }, [activeCustomer, activeDni, isNewCustomer, ticketAmount, processPurchase, isPuntos, config.tierConfig.doubleStampMinSpend, config.tierConfig.doublePointsMinSpend, handleClear]);
 
   const handleRedeemClick = useCallback((reward: Reward) => {
     setSelectedReward(reward);
@@ -115,7 +244,7 @@ export function TerminalPOS() {
   const handleConfirmRedeem = useCallback(() => {
     if (!activeCustomer || !selectedReward) return;
     if (isPuntos) {
-      redeemPoints(activeCustomer.dni, selectedReward.costPoints);
+      redeemPoints(activeCustomer.dni, selectedReward.costPoints, selectedReward.id);
       toast.success(`¡Canje exitoso! Se descontaron ${selectedReward.costPoints.toLocaleString()} pts.`);
     }
     if (isSellos) {
@@ -153,7 +282,7 @@ export function TerminalPOS() {
 
         if (document.activeElement === dniInputRef.current) return;
         
-        if (activeCustomer && ticketAmount && ticketAmount > 0) {
+        if ((activeCustomer || activeDni) && ticketAmount && ticketAmount > 0) {
           e.preventDefault();
           handleProcess();
         }
@@ -162,7 +291,7 @@ export function TerminalPOS() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [activeCustomer, isRewardReady, isPuntos, ticketAmount, dniInput, config, isRedeemModalOpen, availableRewards]);
+  }, [activeCustomer, activeDni, isRewardReady, isPuntos, ticketAmount, dniInput, config, isRedeemModalOpen, availableRewards, handleConfirmRedeem, handleProcess]);
 
   return (
     <div className="flex flex-col w-full items-center justify-start pb-space-xl">
@@ -190,12 +319,17 @@ export function TerminalPOS() {
               <IdCard className="w-4 h-4" />
               DNI / DOCUMENTO DEL CLIENTE
             </label>
-            {activeCustomer && (
+            {activeCustomer ? (
               <span className="inline-flex items-center gap-1 bg-secondary-container/40 text-on-secondary-container px-3 py-0.5 rounded-full font-mono text-xs font-semibold">
                 <CheckCircle2 className="w-3.5 h-3.5" />
                 Cliente identificado
               </span>
-            )}
+            ) : isNewCustomer ? (
+              <span className="inline-flex items-center gap-1 bg-primary-container text-on-primary-container px-3 py-0.5 rounded-full font-mono text-xs font-semibold">
+                <UserPlus className="w-3.5 h-3.5" />
+                Nuevo en el programa
+              </span>
+            ) : null}
           </div>
           
           <form onSubmit={handleSearch} className="rounded-xl bg-surface-container-lowest p-3.5 md:p-4 flex items-center justify-between shadow-sm shadow-primary/10 border border-outline-variant/30 focus-within:border-primary transition-colors">
@@ -230,17 +364,66 @@ export function TerminalPOS() {
         {/* 2. Tarjeta / Contenedor de Información del Cliente */}
         {activeCustomer ? (
           <div className="bg-surface-container-low/70 rounded-xl p-5 flex flex-col gap-space-md animate-in fade-in zoom-in-95 duration-200">
+            {activeCustomer.isRegistered === false && (
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 px-3.5 py-2 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-800 text-xs font-sans">
+                <div className="flex items-center gap-2">
+                  <QrCode className="w-4 h-4 text-amber-600 shrink-0" />
+                  <span><strong>Cuenta pendiente de activación:</strong> Este cliente suma con su DNI pero aún no activó su cuenta en la app.</span>
+                </div>
+                <span className="font-mono text-[10px] font-bold px-2 py-0.5 rounded bg-amber-500/20 text-amber-800 shrink-0 self-start sm:self-auto">Invitar a escanear QR</span>
+              </div>
+            )}
+
+            {/* Alerta de Inactividad si está en riesgo o fue degradado */}
+            {tierStatus?.isAtRisk && (
+              <div className="flex items-center gap-2 px-3.5 py-2 rounded-lg bg-amber-100 border border-amber-300 text-amber-900 text-xs font-sans">
+                <AlertTriangle className="w-4 h-4 text-amber-700 shrink-0" />
+                <span>
+                  <strong>¡En riesgo de inactividad!</strong> No visita desde hace {tierStatus.daysInactive} días. Perderá su nivel si no registra compras antes de los {config.tierConfig.inactivityDaysDowngrade} días.
+                </span>
+              </div>
+            )}
+
+            {tierStatus?.isDowngraded && (
+              <div className="flex items-center gap-2 px-3.5 py-2 rounded-lg bg-slate-200/80 border border-slate-300 text-slate-800 text-xs font-sans">
+                <AlertTriangle className="w-4 h-4 text-slate-600 shrink-0" />
+                <span>
+                  <strong>Nivel ajustado por inactividad:</strong> Inactivo por {tierStatus.daysInactive} días (&gt; {config.tierConfig.inactivityDaysDowngrade} días). Sumando visitas hoy recuperará su nivel.
+                </span>
+              </div>
+            )}
+
+            {/* Cabecera del Cliente con Tier Badge y Beneficios */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-space-xs">
               <div className="flex items-center gap-2 flex-wrap">
                 <div className="w-8 h-8 rounded-full bg-primary text-on-primary flex items-center justify-center font-display text-lg font-bold">
                   {activeCustomer.name.charAt(0)}
                 </div>
                 <h2 className="font-display text-2xl font-bold text-on-surface tracking-tight">{activeCustomer.name}</h2>
-                <span className="inline-flex items-center gap-1 bg-surface-container-highest text-primary font-mono text-[11px] font-semibold px-2.5 py-0.5 rounded-md">
-                  <Star className="w-3.5 h-3.5 text-primary fill-primary" />
-                  VIP {activeCustomer.tier}
+                
+                {/* Badge de Nivel Destacado */}
+                <span className={`inline-flex items-center gap-1.5 font-mono text-[11px] font-bold px-2.5 py-0.5 rounded-md border shadow-xs ${
+                  activeCustomer.tier === 'GOLD' 
+                    ? 'bg-amber-100 text-amber-900 border-amber-400' 
+                    : activeCustomer.tier === 'SILVER'
+                    ? 'bg-slate-200 text-slate-800 border-slate-400'
+                    : 'bg-amber-50 text-amber-950 border-amber-200'
+                }`}>
+                  {activeCustomer.tier === 'GOLD' && <Crown className="w-3.5 h-3.5 text-amber-600 fill-amber-600" />}
+                  {activeCustomer.tier === 'SILVER' && <Star className="w-3.5 h-3.5 text-slate-600 fill-slate-500" />}
+                  {activeCustomer.tier === 'BRONZE' && <ShieldCheck className="w-3.5 h-3.5 text-amber-700" />}
+                  {activeCustomer.tier === 'GOLD' ? 'ORO VIP' : activeCustomer.tier === 'SILVER' ? 'PLATA' : 'BRONZE'}
                 </span>
+
+                {/* Si es sellos, mostrar tarjetas completadas acumuladas */}
+                {isSellos && (
+                  <span className="inline-flex items-center gap-1 bg-surface-container text-on-surface-variant font-mono text-[11px] font-semibold px-2.5 py-0.5 rounded-md border border-outline-variant/30">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-secondary" />
+                    {activeCustomer.completedCards || 0} {(activeCustomer.completedCards || 0) === 1 ? 'tarjeta completada' : 'tarjetas completadas'}
+                  </span>
+                )}
               </div>
+
               <div className="flex flex-col sm:items-end font-mono text-xs text-on-surface-variant">
                 <span className="flex items-center gap-1">
                   <Clock className="w-3.5 h-3.5" />
@@ -249,9 +432,29 @@ export function TerminalPOS() {
                 <span className="font-medium text-on-surface/80 mt-0.5">Visitas históricas: <span className="text-on-surface font-semibold">{activeCustomer.totalVisits}</span></span>
               </div>
             </div>
+
+            {/* Barra de Progreso hacia el Próximo Nivel */}
+            {nextTierProgress && !nextTierProgress.isMax && (
+              <div className="bg-surface-container-lowest rounded-xl p-3 flex flex-col gap-1.5 border border-outline-variant/30">
+                <div className="flex items-center justify-between text-xs font-sans">
+                  <span className="text-on-surface font-medium flex items-center gap-1.5">
+                    <Crown className="w-3.5 h-3.5 text-primary" />
+                    Rumbo a Nivel <strong>{nextTierProgress.nextTierLabel}</strong>:
+                  </span>
+                  <span className="font-mono text-xs font-bold text-primary">
+                    Faltan {nextTierProgress.remainingUnits} {nextTierProgress.unitLabel}
+                  </span>
+                </div>
+                <div className="h-2 w-full bg-surface-container rounded-full overflow-hidden">
+                  <div 
+                    className="h-full bg-gradient-to-r from-primary to-primary-container rounded-full transition-all duration-300"
+                    style={{ width: `${nextTierProgress.percent}%` }}
+                  />
+                </div>
+              </div>
+            )}
             
             <div className="flex flex-col gap-space-md">
-              
               {/* VISTA SELLOS */}
               {isSellos && (
                 <>
@@ -374,6 +577,51 @@ export function TerminalPOS() {
               )}
             </div>
           </div>
+        ) : isNewCustomer ? (
+          <div className="bg-surface-container-low/90 border border-primary/25 rounded-xl p-5 md:p-6 flex flex-col gap-4 animate-in fade-in zoom-in-95 duration-200 shadow-sm">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="w-11 h-11 rounded-xl bg-primary text-on-primary flex items-center justify-center font-display text-lg font-bold shadow-sm">
+                  <UserPlus className="w-6 h-6" />
+                </div>
+                <div className="flex flex-col">
+                  <div className="flex items-center gap-2">
+                    <h2 className="font-display text-2xl font-bold text-on-surface tracking-tight">Cliente Nuevo</h2>
+                    <span className="inline-flex items-center gap-1 bg-primary/10 text-primary border border-primary/20 font-mono text-[11px] font-bold px-2.5 py-0.5 rounded-full">
+                      <Sparkles className="w-3 h-3 text-primary" />
+                      Primer Visita (Nivel Bronze)
+                    </span>
+                  </div>
+                  <span className="font-mono text-xs text-on-surface-variant font-medium mt-0.5">
+                    DNI identificado: <strong className="text-on-surface font-bold">{activeDni}</strong>
+                  </span>
+                </div>
+              </div>
+              <div className="self-start sm:self-auto px-3 py-1 rounded-lg bg-surface-container-lowest font-mono text-xs font-semibold text-secondary flex items-center gap-1.5 shadow-sm border border-outline-variant/20">
+                <Check className="w-3.5 h-3.5" />
+                Listo para sumar beneficios
+              </div>
+            </div>
+
+            <div className="bg-surface-container-lowest rounded-xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border border-outline-variant/30 shadow-sm">
+              <div className="flex items-start gap-3">
+                <div className="w-9 h-9 rounded-lg bg-secondary/10 text-secondary flex items-center justify-center shrink-0 mt-0.5 sm:mt-0">
+                  <QrCode className="w-5 h-5" />
+                </div>
+                <div className="flex flex-col">
+                  <span className="font-sans text-xs font-bold text-on-surface uppercase tracking-wide">
+                    Guion para mostrador:
+                  </span>
+                  <p className="font-sans text-xs text-on-surface-variant mt-0.5 leading-relaxed">
+                    "Al cobrar, se guardarán sus beneficios con su DNI. <strong className="text-on-surface font-semibold">Indícale que escanee el QR del mostrador</strong> para crear su cuenta y ver su tarjeta digital."
+                  </p>
+                </div>
+              </div>
+              <div className="shrink-0 font-mono text-[11px] px-2.5 py-1 rounded-md bg-secondary-container/40 text-on-secondary-container font-semibold">
+                {isPuntos ? 'Gana puntos hoy' : 'Inicia tarjeta con 1 sello'}
+              </div>
+            </div>
+          </div>
         ) : (
           <div className="bg-surface-container-lowest border border-outline-variant/30 border-dashed rounded-xl p-8 flex flex-col items-center justify-center text-center gap-3">
             <div className="w-12 h-12 rounded-full bg-surface-container flex items-center justify-center text-on-surface-variant mb-2">
@@ -383,7 +631,7 @@ export function TerminalPOS() {
           </div>
         )}
 
-        {activeCustomer && (
+        {(activeCustomer || isNewCustomer) && (
           <div className="flex flex-col gap-space-md">
             <div className="flex flex-col gap-2">
               <label className="font-sans text-sm font-semibold text-on-surface">Monto del Ticket de Compra (AR$)</label>
@@ -398,20 +646,55 @@ export function TerminalPOS() {
                 />
                 {typeof ticketAmount === 'number' && ticketAmount > 0 && (
                   isPuntos ? (
-                    <div className="absolute right-4 top-1/2 -translate-y-1/2 inline-flex items-center gap-1 bg-primary-container text-on-primary-container px-2 py-0.5 rounded-md font-mono text-[11px] font-bold">
-                      <ArrowUpCircle className="w-3.5 h-3.5" />
-                      +{config.pointsPerArs > 0 ? Math.floor(Number(ticketAmount) / config.pointsPerArs) : 0} pts
+                    <div className={`absolute right-4 top-1/2 -translate-y-1/2 inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md font-mono text-[11px] font-bold ${
+                      config.tierConfig.doublePointsEnabled && Number(ticketAmount) >= config.tierConfig.doublePointsMinSpend
+                        ? 'bg-primary text-on-primary shadow-sm'
+                        : 'bg-primary-container text-on-primary-container'
+                    }`}>
+                      {config.tierConfig.doublePointsEnabled && Number(ticketAmount) >= config.tierConfig.doublePointsMinSpend ? (
+                        <>
+                          <Zap className="w-3.5 h-3.5 text-on-primary fill-on-primary" />
+                          <span>
+                            +{((config.spendAmount || config.pointsPerArs || 100) > 0)
+                              ? Math.floor((Number(ticketAmount) / (config.spendAmount || config.pointsPerArs || 100)) * (config.pointsAwarded ?? 1) * 2)
+                              : 0} pts ⚡ (2x Puntos)
+                          </span>
+                        </>
+                      ) : (
+                        <>
+                          <ArrowUpCircle className="w-3.5 h-3.5" />
+                          <span>
+                            +{((config.spendAmount || config.pointsPerArs || 100) > 0)
+                              ? Math.floor((Number(ticketAmount) / (config.spendAmount || config.pointsPerArs || 100)) * (config.pointsAwarded ?? 1))
+                              : 0} pts
+                          </span>
+                        </>
+                      )}
                     </div>
                   ) : (
-                    <div className="absolute right-4 top-1/2 -translate-y-1/2 inline-flex items-center gap-1 bg-secondary-container text-on-secondary-container px-2 py-0.5 rounded-md font-mono text-[11px] font-bold">
-                      <ArrowUpCircle className="w-3.5 h-3.5" />
-                      +1 sello
+                    <div className={`absolute right-4 top-1/2 -translate-y-1/2 inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md font-mono text-[11px] font-bold ${
+                      config.tierConfig.doubleStampEnabled && Number(ticketAmount) >= config.tierConfig.doubleStampMinSpend
+                        ? 'bg-secondary text-on-secondary shadow-sm'
+                        : 'bg-secondary-container text-on-secondary-container'
+                    }`}>
+                      {config.tierConfig.doubleStampEnabled && Number(ticketAmount) >= config.tierConfig.doubleStampMinSpend ? (
+                        <>
+                          <Zap className="w-3.5 h-3.5 text-on-secondary fill-on-secondary" />
+                          <span>+2 sellos ⚡ (Doble Sello)</span>
+                        </>
+                      ) : (
+                        <>
+                          <ArrowUpCircle className="w-3.5 h-3.5" />
+                          <span>+1 sello</span>
+                        </>
+                      )}
                     </div>
                   )
                 )}
               </div>
             </div>
 
+            {/* PREMIOS DISPONIBLES SEGÚN TIER */}
             {isRewardReady && (
               <div className="bg-secondary-container/25 border border-secondary/20 rounded-xl p-4 md:p-5 flex flex-col gap-space-md shadow-sm animate-in fade-in slide-in-from-bottom-4">
                 <div className="flex items-start gap-3">
@@ -423,7 +706,7 @@ export function TerminalPOS() {
                       <span className="font-display text-lg font-bold text-on-surface leading-snug">¡Premios Disponibles para Canjear!</span>
                     </div>
                     <p className="font-sans text-sm text-on-surface-variant mt-0.5">
-                      El cliente tiene saldo suficiente para elegir cualquiera de estas recompensas.
+                      Habilitados para su <strong>Nivel {activeCustomer?.tier}</strong> con saldo suficiente.
                     </p>
                   </div>
                 </div>
@@ -439,14 +722,43 @@ export function TerminalPOS() {
                         <Gift className="w-4.5 h-4.5 text-secondary shrink-0" />
                         <span className="truncate">{reward.name}</span>
                       </div>
-                      <div className="flex items-center gap-3 shrink-0 pl-2">
-                        <span className="font-mono text-secondary font-bold">
+                      <div className="flex items-center gap-2 shrink-0 pl-2">
+                        <span className="font-mono text-secondary font-bold text-xs">
                           {isPuntos 
                             ? `-${reward.costPoints.toLocaleString()} pts` 
                             : `Requiere ${reward.costStamps} sellos`}
                         </span>
                       </div>
                     </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* PREMIOS BLOQUEADOS POR NIVEL SUPERIOR (Incentivo de Retención) */}
+            {lockedTierRewards.length > 0 && (
+              <div className="bg-surface-container-low/60 border border-outline-variant/30 rounded-xl p-4 flex flex-col gap-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-on-surface font-sans text-xs font-semibold">
+                    <Lock className="w-4 h-4 text-outline" />
+                    <span>Recompensas Exclusivas de Tiers Superiores</span>
+                  </div>
+                  <span className="font-mono text-[10px] text-outline font-medium">Desbloquea subiendo de nivel</span>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-1">
+                  {lockedTierRewards.map((reward) => (
+                    <div 
+                      key={reward.id}
+                      className="p-2.5 rounded-lg bg-surface-container-lowest/80 border border-outline-variant/20 flex items-center justify-between text-xs text-on-surface-variant opacity-85"
+                    >
+                      <div className="flex items-center gap-2 truncate">
+                        <Lock className="w-3.5 h-3.5 text-outline shrink-0" />
+                        <span className="truncate">{reward.name}</span>
+                      </div>
+                      <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-amber-500/10 text-amber-800 border border-amber-500/20 shrink-0">
+                        {reward.minTier === 'GOLD' ? 'Exclusivo Oro' : 'Nivel Plata'}
+                      </span>
+                    </div>
                   ))}
                 </div>
               </div>
@@ -458,18 +770,25 @@ export function TerminalPOS() {
           <button 
             type="button" 
             onClick={handleProcess}
-            disabled={!activeCustomer || !ticketAmount || ticketAmount <= 0}
+            disabled={(!activeCustomer && !isNewCustomer) || !ticketAmount || ticketAmount <= 0}
             className={`w-full font-display text-lg font-bold py-3.5 px-6 rounded-xl shadow-sm flex items-center justify-center gap-3 transition-colors active:scale-[0.99] ${
-              activeCustomer && ticketAmount && ticketAmount > 0 
+              (activeCustomer || isNewCustomer) && ticketAmount && ticketAmount > 0 
                 ? 'bg-primary hover:bg-primary-container text-on-primary' 
                 : 'bg-surface-container-high text-on-surface-variant/50 cursor-not-allowed'
             }`}
           >
             <Banknote className="w-5 h-5" />
             <span>
-              {isPuntos ? 'Cargar Puntos' : 'Registrar Visita'} 
-              {isSellos && activeCustomer && typeof ticketAmount === 'number' && ticketAmount > 0 && (
-                <span className="font-sans text-sm font-medium ml-1.5 opacity-90">(+1 sello)</span>
+              {isNewCustomer 
+                ? (isPuntos ? 'Acreditar Puntos y Registrar' : 'Asignar Sello(s) y Registrar') 
+                : (isPuntos ? 'Cargar Puntos' : 'Registrar Visita')}
+              {isPuntos && typeof ticketAmount === 'number' && ticketAmount > 0 && config.tierConfig.doublePointsEnabled && Number(ticketAmount) >= config.tierConfig.doublePointsMinSpend && (
+                <span className="font-sans text-sm font-medium ml-1.5 opacity-90">(Doble Puntos ⚡)</span>
+              )}
+              {isSellos && typeof ticketAmount === 'number' && ticketAmount > 0 && (
+                <span className="font-sans text-sm font-medium ml-1.5 opacity-90">
+                  ({config.tierConfig.doubleStampEnabled && Number(ticketAmount) >= config.tierConfig.doubleStampMinSpend ? '+2 sellos ⚡' : '+1 sello'})
+                </span>
               )}
             </span>
             <kbd className="font-mono text-xs px-2.5 py-1 rounded bg-surface-container-lowest/20 text-current font-semibold shadow-inner opacity-80 ml-auto">Enter ↵</kbd>
