@@ -8,6 +8,7 @@ import { ProgramConfig } from './screens/ProgramConfig';
 import { CRM } from './screens/CRM';
 import { Dashboard } from './screens/Dashboard';
 import { Login } from './screens/Login';
+import { Register } from './screens/Register';
 import { useAuthStore } from './store/useAuthStore';
 import { useLoyaltyStore } from './store/useLoyaltyStore';
 
@@ -36,28 +37,30 @@ function App() {
     );
   }
 
-  if (!session || !user) {
-    return (
-      <>
-        <Toaster position="bottom-right" />
-        <Login />
-      </>
-    );
-  }
+  const isAuthenticated = Boolean(session && user);
 
   return (
     <BrowserRouter>
       <Toaster position="bottom-right" />
-      <Layout>
+      {!isAuthenticated ? (
         <Routes>
-          <Route path="/" element={<TerminalPOS />} />
-          <Route path="/config" element={<ProgramConfig />} />
-          <Route path="/crm" element={<CRM />} />
-          <Route path="/dashboard" element={<Dashboard />} />
-          {/* Catch-all */}
-          <Route path="*" element={<Navigate to="/" replace />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
+          <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>
-      </Layout>
+      ) : (
+        <Layout>
+          <Routes>
+            <Route path="/" element={<TerminalPOS />} />
+            <Route path="/config" element={<ProgramConfig />} />
+            <Route path="/crm" element={<CRM />} />
+            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/login" element={<Navigate to="/" replace />} />
+            <Route path="/register" element={<Navigate to="/" replace />} />
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </Layout>
+      )}
     </BrowserRouter>
   );
 }

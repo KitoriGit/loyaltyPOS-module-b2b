@@ -1,10 +1,12 @@
 import { useState } from 'react';
-import { Monitor, Lock, Mail, Loader2, ArrowRight, AlertCircle, ShieldCheck } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { Monitor, Lock, Mail, Loader2, ArrowRight, AlertCircle, ShieldCheck, Eye, EyeOff } from 'lucide-react';
 import { useAuthStore } from '../store/useAuthStore';
 
 export function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -83,13 +85,26 @@ export function Login() {
             <div className="relative">
               <Lock className="w-5 h-5 absolute left-3.5 top-1/2 -translate-y-1/2 text-on-surface-variant" />
               <input
-                type="password"
+                type={showPassword ? 'text' : 'password'}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
                 required
-                className="w-full pl-11 pr-4 py-3 rounded-xl bg-surface-container-low/60 border border-outline-variant/50 focus:border-primary focus:bg-surface-container-lowest focus:outline-none transition-all text-sm font-sans text-on-surface"
+                className="w-full pl-11 pr-11 py-3 rounded-xl bg-surface-container-low/60 border border-outline-variant/50 focus:border-primary focus:bg-surface-container-lowest focus:outline-none transition-all text-sm font-sans text-on-surface"
               />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-on-surface-variant hover:text-on-surface transition-colors p-1"
+                title={showPassword ? 'Ocultar contraseña' : 'Ver contraseña'}
+                tabIndex={-1}
+              >
+                {showPassword ? (
+                  <EyeOff className="w-4.5 h-4.5" />
+                ) : (
+                  <Eye className="w-4.5 h-4.5" />
+                )}
+              </button>
             </div>
           </div>
 
@@ -111,9 +126,18 @@ export function Login() {
             )}
           </button>
 
-          <p className="text-center font-sans text-xs text-on-surface-variant/80 mt-1">
-            Ingresa con tu cuenta de dueño o usuario cajero del comercio.
-          </p>
+          {/* Enlace para registrar nueva cuenta */}
+          <div className="text-center font-sans text-xs text-on-surface-variant pt-3 border-t border-outline-variant/20 flex flex-col gap-1.5">
+            <div>
+              ¿No tienes una cuenta aún?{' '}
+              <Link to="/register" className="font-semibold text-primary hover:underline">
+                Crear cuenta de comercio
+              </Link>
+            </div>
+            <p className="text-[11px] text-on-surface-variant/70">
+              Válido para dueños y usuarios de terminales del ecosistema.
+            </p>
+          </div>
         </form>
       </div>
     </div>

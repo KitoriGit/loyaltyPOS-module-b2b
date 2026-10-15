@@ -23,6 +23,7 @@ interface AuthState {
 
   initialize: () => Promise<void>;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
+  signUp: (email: string, password: string) => Promise<{ error: Error | null; data: any }>;
   signOut: () => Promise<void>;
   setCurrentBranch: (branch: Branch) => void;
 }
@@ -53,23 +54,48 @@ export async function fetchSessionContext(user: User) {
     };
   }
 
-  // 2. Verificar si es dueño
-  const { data: workspaces, error } = await supabase
-    .from('workspaces')
-    .select('id, name')
-    .eq('user_id', user.id);
+  // 2. Verificar si es dueño (con reintentos por si el trigger de Supabase tarda)
+  let attempts = 0;
+  while (attempts < 5) {
+    const { data: workspaces, error } = await supabase
+      .from('workspaces')
+      .select('id, name')
+      .eq('user_id', user.id);
 
-  if (error) {
-    console.error('Error fetching workspaces:', error);
+    if (error) {
+      console.error('Error fetching workspaces:', error);
+    }
+
+    if (workspaces && workspaces.length > 0) {
+      return {
+        userType: 'owner' as const,
+        workspaceId: workspaces[0].id,
+        employeeId: null,
+        tenantName: workspaces[0].name,
+      };
+    }
+    await new Promise((res) => setTimeout(res, 500));
+    attempts++;
   }
 
-  if (workspaces && workspaces.length > 0) {
-    return {
-      userType: 'owner' as const,
-      workspaceId: workspaces[0].id,
-      employeeId: null,
-      tenantName: workspaces[0].name,
-    };
+  // Fallback de rescate si el trigger no creó el workspace
+  try {
+    const { data: newWs } = await supabase
+      .from('workspaces')
+      .insert([{ user_id: user.id, name: 'Mi Comercio' }])
+      .select('id, name')
+      .maybeSingle();
+
+    if (newWs) {
+      return {
+        userType: 'owner' as const,
+        workspaceId: newWs.id,
+        employeeId: null,
+        tenantName: newWs.name,
+      };
+    }
+  } catch (err) {
+    console.error('Error al crear workspace de emergencia:', err);
   }
 
   return {
@@ -203,6 +229,40 @@ export const useAuthStore = create<AuthState>((set) => ({
     }
 
     return { error: null };
+  },
+
+  signUp: async (email, password) => {
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+    });
+
+    if (error) return { error, data: null };
+
+    if (data.session && data.user) {
+      const ctx = await fetchSessionContext(data.user);
+      let branches: Branch[] = [];
+      if (ctx.workspaceId) {
+        const { data: branchData } = await supabase
+          .from('branches')
+          .select('*')
+          .eq('workspace_id', ctx.workspaceId)
+          .eq('is_active', true);
+        branches = branchData || [];
+      }
+      set({
+        session: data.session,
+        user: data.user,
+        userType: ctx.userType,
+        workspaceId: ctx.workspaceId,
+        employeeId: ctx.employeeId,
+        tenantName: ctx.tenantName,
+        branches,
+        currentBranch: branches.length > 0 ? branches[0] : null,
+      });
+    }
+
+    return { error: null, data };
   },
 
   signOut: async () => {
