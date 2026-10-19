@@ -5,6 +5,8 @@ import {
   Gift, CupSoda, ArrowUpCircle, Banknote, Coins, UserPlus, Sparkles, QrCode,
   Crown, Zap, Lock, AlertTriangle, ShieldCheck
 } from 'lucide-react';
+import { supabase } from '../lib/supabase';
+import { useAuthStore } from '../store/useAuthStore';
 import { 
   useLoyaltyStore, 
   type Reward, 
@@ -20,6 +22,8 @@ export function TerminalPOS() {
   const processPurchase = useLoyaltyStore((state) => state.processPurchase);
   const redeemPoints = useLoyaltyStore((state) => state.redeemPoints);
   const redeemStamps = useLoyaltyStore((state) => state.redeemStamps);
+  const validateRedemptionToken = useLoyaltyStore((state) => state.validateRedemptionToken);
+  const workspaceId = useAuthStore((state) => state.workspaceId);
 
   const isPuntos = config.type === 'puntos';
   const isSellos = config.type === 'sellos';
@@ -30,6 +34,13 @@ export function TerminalPOS() {
   
   const [isRedeemModalOpen, setIsRedeemModalOpen] = useState(false);
   const [selectedReward, setSelectedReward] = useState<Reward | null>(null);
+
+  // Estados para validación de tokens QR / OTP y canjes store-wide
+  const [isTokenModalOpen, setIsTokenModalOpen] = useState(false);
+  const [tokenInput, setTokenInput] = useState('');
+  const [isValidatingToken, setIsValidatingToken] = useState(false);
+  const [storePendingTokens, setStorePendingTokens] = useState<any[]>([]);
+  const [activeCustomerPendingToken, setActiveCustomerPendingToken] = useState<any | null>(null);
   
   const dniInputRef = useRef<HTMLInputElement>(null);
 
@@ -182,14 +193,206 @@ export function TerminalPOS() {
 
   const isRewardReady = availableRewards.length > 0;
 
-  const handleSearch = useCallback((e?: React.FormEvent) => {
-    if (e) e.preventDefault();
-    if (dniInput.trim()) {
-      setActiveDni(dniInput.trim());
-      setDniInput('');
-      dniInputRef.current?.blur();
+  // Obtener workspaceId efectivo del POS
+  const effectiveWsId = workspaceId || (customers.length > 0 ? (customers[0] as any).workspaceId || (customers[0] as any).workspace_id : null);
+
+  // 1. Consulta y escucha dedicada para el cliente que está activo en pantalla
+  useEffect(() => {
+    if (!activeCustomer?.id) {
+      setActiveCustomerPendingToken(null);
+      return;
     }
-  }, [dniInput]);
+
+    const fetchActiveToken = async () => {
+      try {
+        const nowIso = new Date().toISOString();
+        const { data, error } = await supabase
+          .from('loyalty_redemption_tokens')
+          .select('*')
+          .eq('customer_id', activeCustomer.id)
+          .eq('status', 'PENDING')
+          .gt('expires_at', nowIso)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (!error) {
+          setActiveCustomerPendingToken(data || null);
+        }
+      } catch (err) {
+        console.warn('[TerminalPOS] Error consultando token de cliente activo:', err);
+      }
+    };
+
+    fetchActiveToken();
+
+    // Polling agresivo cada 1.5s para detectar el canje apenas el cliente pulse en su app
+    const interval = setInterval(fetchActiveToken, 1500);
+
+    const channelName = `pos_active_token_${activeCustomer.id}_${Date.now()}`;
+    const channel = supabase
+      .channel(channelName)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'loyalty_redemption_tokens',
+          filter: `customer_id=eq.${activeCustomer.id}`,
+        },
+        () => {
+          fetchActiveToken();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      clearInterval(interval);
+      supabase.removeChannel(channel);
+    };
+  }, [activeCustomer?.id]);
+
+  // 2. Escuchar y consultar tokens de canje pendientes store-wide (en todo el local)
+  useEffect(() => {
+    const fetchTokens = async () => {
+      try {
+        const nowIso = new Date().toISOString();
+        let query = supabase
+          .from('loyalty_redemption_tokens')
+          .select('*')
+          .eq('status', 'PENDING')
+          .gt('expires_at', nowIso)
+          .order('created_at', { ascending: false });
+
+        if (effectiveWsId) {
+          query = query.eq('workspace_id', effectiveWsId);
+        }
+
+        const { data, error } = await query;
+        if (!error && data) {
+          const enriched = data.map((t: any) => {
+            const cust = customers.find((c) => c.id === t.customer_id);
+            return {
+              ...t,
+              loyalty_customers: cust ? {
+                id: cust.id,
+                dni: cust.dni,
+                name: cust.name,
+                points: cust.points,
+                stamps: cust.stamps,
+              } : null,
+            };
+          });
+          setStorePendingTokens(enriched);
+        }
+      } catch (err) {
+        console.warn('[TerminalPOS] Error consultando tokens de tienda:', err);
+      }
+    };
+
+    fetchTokens();
+
+    const interval = setInterval(fetchTokens, 2500);
+
+    const channelName = `pos_store_tokens_${effectiveWsId || 'all'}_${Date.now()}`;
+    const channel = supabase
+      .channel(channelName)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'loyalty_redemption_tokens',
+        },
+        () => {
+          fetchTokens();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      clearInterval(interval);
+      supabase.removeChannel(channel);
+    };
+  }, [effectiveWsId, customers]);
+
+  // Otros tokens pendientes en la tienda (de clientes aún no buscados en caja)
+  const otherPendingTokens = useMemo(() => {
+    return storePendingTokens.filter((t) => !activeCustomer || t.customer_id !== activeCustomer.id);
+  }, [storePendingTokens, activeCustomer]);
+
+  const handleValidateTokenSubmit = useCallback(async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!tokenInput.trim()) return;
+
+    setIsValidatingToken(true);
+    const result = await validateRedemptionToken(tokenInput.trim());
+    setIsValidatingToken(false);
+
+    if (result.success) {
+      toast.success(
+        `🎉 ¡Canje exitoso para ${result.customerName}! Recompensa: ${result.rewardName}`,
+        { duration: 6000 }
+      );
+      if (result.customerDni) {
+        setActiveDni(result.customerDni);
+      }
+      setIsTokenModalOpen(false);
+      setTokenInput('');
+      setActiveCustomerPendingToken(null);
+      setStorePendingTokens((prev) => prev.filter((t) => t.token_code !== tokenInput.trim()));
+    } else {
+      toast.error(result.message);
+    }
+  }, [tokenInput, validateRedemptionToken]);
+
+  const handleApproveToken = useCallback(async (token: any) => {
+    if (!token) return;
+    setIsValidatingToken(true);
+    const result = await validateRedemptionToken(token.token_code);
+    setIsValidatingToken(false);
+
+    if (result.success) {
+      toast.success(
+        `🎉 ¡Canje exitoso! Se entregó "${result.rewardName}" a ${result.customerName}.`,
+        { duration: 6000 }
+      );
+      if (result.customerDni) {
+        setActiveDni(result.customerDni);
+      }
+      setActiveCustomerPendingToken(null);
+      setStorePendingTokens((prev) => prev.filter((t) => t.id !== token.id));
+    } else {
+      toast.error(result.message);
+    }
+  }, [validateRedemptionToken]);
+
+  const handleSearch = useCallback(async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    const clean = dniInput.trim();
+    if (!clean) return;
+
+    const isExactDni = customers.some(c => c.dni === clean);
+    const isTokenFormat = (clean.startsWith('{') && clean.includes('tokenCode')) || (/^\d{6}$/.test(clean) && !isExactDni);
+
+    if (isTokenFormat) {
+      setIsValidatingToken(true);
+      const res = await validateRedemptionToken(clean);
+      setIsValidatingToken(false);
+      if (res.success) {
+        toast.success(`🎉 ¡Canje validado! ${res.rewardName} para ${res.customerName}`, { duration: 6000 });
+        if (res.customerDni) {
+          setActiveDni(res.customerDni);
+        }
+        setDniInput('');
+        return;
+      }
+    }
+
+    setActiveDni(clean);
+    setDniInput('');
+    dniInputRef.current?.blur();
+  }, [dniInput, customers, validateRedemptionToken]);
 
   const handleClear = useCallback(() => {
     setActiveDni('');
@@ -350,6 +553,15 @@ export function TerminalPOS() {
               />
             </div>
             <div className="flex items-center gap-space-xs flex-shrink-0">
+              <button
+                type="button"
+                onClick={() => setIsTokenModalOpen(true)}
+                title="Validar código de canje o escanear QR"
+                className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-secondary-container/50 hover:bg-secondary-container text-on-secondary-container transition-colors font-mono text-xs font-semibold"
+              >
+                <QrCode className="w-4 h-4 text-secondary" />
+                <span className="hidden sm:inline">Validar Canje</span>
+              </button>
               <button type="submit" className="group flex items-center gap-1.5 px-3 py-2 rounded-lg bg-surface-container-low hover:bg-surface-container text-on-surface transition-colors">
                 <Search className="w-4.5 h-4.5 text-on-surface-variant group-hover:text-primary" />
                 <kbd className="font-mono text-[11px] px-1.5 py-0.5 rounded bg-surface-container-lowest text-on-surface-variant shadow-sm border border-outline-variant/30 font-semibold">/</kbd>
@@ -361,9 +573,87 @@ export function TerminalPOS() {
           </form>
         </div>
 
+        {/* Banner para solicitudes de canje de cualquier cliente en la tienda */}
+        {otherPendingTokens.length > 0 && (
+          <div className="flex flex-col gap-2">
+            {otherPendingTokens.map((token) => (
+              <div
+                key={token.id}
+                className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-xl bg-amber-500/15 border border-amber-500/40 text-amber-950 animate-in fade-in duration-200"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-amber-600 text-white flex items-center justify-center shrink-0 shadow-sm">
+                    <Gift className="w-5 h-5" />
+                  </div>
+                  <div className="flex flex-col">
+                    <div className="flex items-center gap-2">
+                      <span className="font-sans text-xs font-bold uppercase tracking-wider text-amber-800">
+                        Canje Solicitado en App
+                      </span>
+                      <span className="font-mono text-xs px-2 py-0.5 rounded bg-amber-200 font-bold text-amber-950 tabular-nums">
+                        Código: {token.token_code}
+                      </span>
+                    </div>
+                    <span className="font-sans text-sm font-semibold text-amber-950 mt-0.5">
+                      {token.reward_name} ({token.points_cost > 0 ? `-${token.points_cost} pts` : `-${token.stamps_cost} sellos`})
+                      <span className="font-normal text-xs text-amber-800 ml-2">
+                        • Cliente: {token.loyalty_customers?.name || `DNI ${token.loyalty_customers?.dni || ''}`}
+                      </span>
+                    </span>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => handleApproveToken(token)}
+                  disabled={isValidatingToken}
+                  className="px-4 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-sans text-xs font-bold shadow-sm transition-colors flex items-center justify-center gap-2 shrink-0 disabled:opacity-50 cursor-pointer"
+                >
+                  <Check className="w-4 h-4 stroke-[3]" />
+                  <span>{isValidatingToken ? 'Aprobando...' : 'Aprobar y Entregar'}</span>
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+
         {/* 2. Tarjeta / Contenedor de Información del Cliente */}
         {activeCustomer ? (
           <div className="bg-surface-container-low/70 rounded-xl p-5 flex flex-col gap-space-md animate-in fade-in zoom-in-95 duration-200">
+            {/* Banner de Canje Solicitado en App */}
+            {activeCustomerPendingToken && (
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-950 animate-in fade-in duration-200">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-sm">
+                    <Gift className="w-5 h-5" />
+                  </div>
+                  <div className="flex flex-col">
+                    <div className="flex items-center gap-2">
+                      <span className="font-sans text-xs font-bold uppercase tracking-wider text-emerald-800">
+                        Canje Solicitado en App
+                      </span>
+                      <span className="font-mono text-xs px-2 py-0.5 rounded bg-emerald-200/80 font-bold text-emerald-900 tabular-nums">
+                        Código: {activeCustomerPendingToken.token_code}
+                      </span>
+                    </div>
+                    <span className="font-sans text-sm font-semibold text-emerald-900 mt-0.5">
+                      {activeCustomerPendingToken.reward_name} ({activeCustomerPendingToken.points_cost > 0 ? `-${activeCustomerPendingToken.points_cost} pts` : `-${activeCustomerPendingToken.stamps_cost} sellos`})
+                    </span>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => handleApproveToken(activeCustomerPendingToken)}
+                  disabled={isValidatingToken}
+                  className="px-4 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-sans text-xs font-bold shadow-sm transition-colors flex items-center justify-center gap-2 shrink-0 disabled:opacity-50 cursor-pointer"
+                >
+                  <Check className="w-4 h-4 stroke-[3]" />
+                  <span>{isValidatingToken ? 'Aprobando...' : 'Aprobar y Entregar'}</span>
+                </button>
+              </div>
+            )}
+
             {activeCustomer.isRegistered === false && (
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 px-3.5 py-2 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-800 text-xs font-sans">
                 <div className="flex items-center gap-2">
@@ -832,6 +1122,67 @@ export function TerminalPOS() {
               >
                 Confirmar <kbd className="font-mono text-[10px] ml-1 px-1.5 py-0.5 bg-on-secondary/20 rounded">Enter ↵</kbd>
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL PARA INGRESAR O ESCANEAR CÓDIGO QR / OTP */}
+      {isTokenModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-on-surface/40 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+          <div className="bg-surface-container-lowest rounded-2xl shadow-xl w-full max-w-md overflow-hidden flex flex-col animate-in zoom-in-95 duration-200 border border-outline-variant/30">
+            <div className="p-6 flex flex-col gap-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="w-10 h-10 rounded-xl bg-secondary-container/60 text-secondary flex items-center justify-center">
+                    <QrCode className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="font-display text-lg font-bold text-on-surface">Validar Canje de App</h3>
+                    <p className="font-sans text-xs text-on-surface-variant">Código temporal de 15 minutos</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsTokenModalOpen(false)}
+                  className="p-1 rounded-lg text-on-surface-variant hover:text-on-surface"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <p className="font-sans text-xs text-on-surface-variant leading-relaxed">
+                Ingresa el código numérico de 6 dígitos que el cliente tiene en su pantalla o escanea el QR generado con un lector:
+              </p>
+
+              <form onSubmit={handleValidateTokenSubmit} className="flex flex-col gap-4">
+                <input
+                  type="text"
+                  autoFocus
+                  placeholder="Ej: 849201"
+                  value={tokenInput}
+                  onChange={(e) => setTokenInput(e.target.value)}
+                  className="w-full text-center font-mono text-3xl font-bold tracking-widest bg-surface-container-low border border-outline-variant/40 rounded-xl py-3 px-4 text-on-surface outline-none focus:border-primary"
+                />
+
+                <div className="flex gap-2 justify-end pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsTokenModalOpen(false)}
+                    className="px-4 py-2.5 rounded-xl text-on-surface-variant font-sans text-xs font-semibold hover:bg-surface-container transition-colors"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={!tokenInput.trim() || isValidatingToken}
+                    className="px-5 py-2.5 rounded-xl bg-primary text-on-primary font-sans text-xs font-bold hover:bg-primary-container transition-colors disabled:opacity-50 flex items-center gap-2 shadow-sm"
+                  >
+                    <Check className="w-4 h-4 stroke-[3]" />
+                    <span>{isValidatingToken ? 'Validando...' : 'Validar y Aplicar'}</span>
+                  </button>
+                </div>
+              </form>
             </div>
           </div>
         </div>

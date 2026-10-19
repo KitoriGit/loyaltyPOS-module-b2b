@@ -63,6 +63,7 @@ export interface ProgramConfig {
 
 export interface Customer {
   id: string;
+  workspaceId?: string;
   dni: string;
   name: string;
   email?: string;
@@ -209,6 +210,15 @@ interface LoyaltyState {
   redeemPoints: (dni: string, pointsToDeduct: number, rewardId?: string) => Promise<void>;
   redeemStamps: (dni: string, stampsToDeduct: number, rewardId?: string) => Promise<void>;
   addManualAdjustment: (dni: string, pointsChange: number, stampsChange?: number, motive?: string) => Promise<void>;
+  validateRedemptionToken: (codeOrPayload: string) => Promise<{
+    success: boolean;
+    message: string;
+    customerName?: string;
+    rewardName?: string;
+    pointsCost?: number;
+    stampsCost?: number;
+    customerDni?: string;
+  }>;
 }
 
 const DEFAULT_TIER_CONFIG: TierConfig = {
@@ -336,6 +346,7 @@ export const useLoyaltyStore = create<LoyaltyState>((set, get) => ({
 
       const customersList: Customer[] = (dbCustomers || []).map((c: any) => ({
         id: c.id,
+        workspaceId: c.workspace_id,
         dni: c.dni,
         name: c.name,
         points: Number(c.points) || 0,
@@ -547,6 +558,7 @@ export const useLoyaltyStore = create<LoyaltyState>((set, get) => ({
         await supabase
           .from('loyalty_customers')
           .update({
+            dni,
             tier: newTier,
             manual_tier_override: isManual,
           })
@@ -747,6 +759,7 @@ export const useLoyaltyStore = create<LoyaltyState>((set, get) => ({
           await supabase
             .from('loyalty_customers')
             .update({
+              dni: existingCustomer.dni,
               points: updatedCustomer.points,
               stamps: updatedCustomer.stamps,
               total_visits: updatedVisits,
@@ -816,7 +829,10 @@ export const useLoyaltyStore = create<LoyaltyState>((set, get) => ({
       try {
         await supabase
           .from('loyalty_customers')
-          .update({ points: newPoints })
+          .update({
+            dni: customer.dni,
+            points: newPoints,
+          })
           .eq('id', customer.id);
 
         await supabase.from('loyalty_transactions').insert({
@@ -916,6 +932,7 @@ export const useLoyaltyStore = create<LoyaltyState>((set, get) => ({
         await supabase
           .from('loyalty_customers')
           .update({
+            dni: customer.dni,
             stamps: newStamps,
             completed_cards: newCompletedCards,
             tier: effectiveTier,
@@ -1007,6 +1024,242 @@ export const useLoyaltyStore = create<LoyaltyState>((set, get) => ({
       } catch (err) {
         console.error('Error guardando ajuste manual en DB:', err);
       }
+    }
+  },
+
+  validateRedemptionToken: async (codeOrPayload: string) => {
+    const wsId = useAuthStore.getState().workspaceId;
+    const employeeId = useAuthStore.getState().employeeId;
+    const branch = useAuthStore.getState().currentBranch;
+    const cleanInput = (codeOrPayload || '').trim();
+
+    if (!cleanInput) {
+      return { success: false, message: 'Ingrese un código o QR válido.' };
+    }
+
+    let searchCode = cleanInput;
+    let searchTokenId: string | null = null;
+
+    // Si viene como JSON escaneado del QR: {"tokenId":"...","tokenCode":"..."}
+    if (cleanInput.startsWith('{') && cleanInput.endsWith('}')) {
+      try {
+        const parsed = JSON.parse(cleanInput);
+        if (parsed.tokenCode) searchCode = parsed.tokenCode;
+        if (parsed.tokenId) searchTokenId = parsed.tokenId;
+      } catch {
+        // mantener como string
+      }
+    }
+
+    searchCode = searchCode.replace(/\s+/g, '');
+
+    try {
+      let query = supabase
+        .from('loyalty_redemption_tokens')
+        .select('*')
+        .eq('status', 'PENDING');
+
+      if (wsId) {
+        query = query.eq('workspace_id', wsId);
+      }
+
+      if (searchTokenId) {
+        query = query.eq('id', searchTokenId);
+      } else {
+        query = query.eq('token_code', searchCode);
+      }
+
+      const { data: tokenRecord, error: tokenErr } = await query
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (tokenErr || !tokenRecord) {
+        return { success: false, message: 'Código de canje no encontrado o ya utilizado.' };
+      }
+
+      // 2. Verificar vencimiento de 15 minutos
+      const expiresAt = new Date(tokenRecord.expires_at).getTime();
+      if (Date.now() > expiresAt) {
+        await supabase
+          .from('loyalty_redemption_tokens')
+          .update({ status: 'EXPIRED' })
+          .eq('id', tokenRecord.id);
+        return { success: false, message: 'El código de canje ha expirado (límite de 15 minutos).' };
+      }
+
+      // 3. Buscar el cliente asociado
+      const state = get();
+      let customer = state.customers.find((c) => c.id === tokenRecord.customer_id);
+
+      if (!customer) {
+        const { data: cDb } = await supabase
+          .from('loyalty_customers')
+          .select('*')
+          .eq('id', tokenRecord.customer_id)
+          .maybeSingle();
+
+        if (cDb) {
+          customer = {
+            id: cDb.id,
+            workspaceId: cDb.workspace_id,
+            dni: cDb.dni,
+            name: cDb.name,
+            points: Number(cDb.points) || 0,
+            stamps: Number(cDb.stamps) || 0,
+            tier: cDb.tier || 'BRONZE',
+            manualTierOverride: cDb.manual_tier_override || false,
+            totalVisits: Number(cDb.total_visits) || 0,
+            completedCards: Number(cDb.completed_cards) || 0,
+            totalSpent: Number(cDb.total_spent) || 0,
+            lastVisitDate: cDb.last_visit_date || '',
+            claimedRewards: Array.isArray(cDb.claimed_rewards) ? cDb.claimed_rewards : [],
+            isRegistered: cDb.is_registered ?? false,
+          };
+        }
+      }
+
+      if (!customer) {
+        return { success: false, message: 'Cliente asociado al canje no encontrado.' };
+      }
+
+      const pointsCost = Number(tokenRecord.points_cost) || 0;
+      const stampsCost = Number(tokenRecord.stamps_cost) || 0;
+
+      // 4. Validar saldo
+      if (pointsCost > 0 && customer.points < pointsCost) {
+        return {
+          success: false,
+          message: `Saldo insuficiente: el cliente tiene ${customer.points} pts y requiere ${pointsCost} pts.`,
+        };
+      }
+      if (stampsCost > 0 && customer.stamps < stampsCost) {
+        return {
+          success: false,
+          message: `Sellos insuficientes: el cliente tiene ${customer.stamps} sellos y requiere ${stampsCost}.`,
+        };
+      }
+
+      // 5. Descontar saldo, calcular tarjetas completadas y tier según el tipo de programa
+      const txHash = '#' + Math.random().toString(36).substring(2, 7);
+      const txDate = new Date().toISOString();
+      const newPoints = Math.max(0, customer.points - pointsCost);
+      
+      let newStamps = customer.stamps;
+      let newCompletedCards = customer.completedCards || 0;
+      let newClaimedRewards = customer.claimedRewards || [];
+
+      if (state.config.type === 'sellos' && stampsCost > 0) {
+        const maxStampsReward =
+          state.config.rewards.length > 0
+            ? Math.max(...state.config.rewards.map((r) => r.costStamps))
+            : state.config.stampsToReward;
+
+        const isMaxReward = stampsCost >= maxStampsReward;
+        if (isMaxReward) {
+          newStamps = Math.max(0, customer.stamps - maxStampsReward);
+          newCompletedCards = (customer.completedCards || 0) + 1;
+          newClaimedRewards = [];
+        } else {
+          newClaimedRewards = tokenRecord.reward_id
+            ? [...newClaimedRewards, tokenRecord.reward_id]
+            : newClaimedRewards;
+        }
+      } else {
+        newStamps = Math.max(0, customer.stamps - stampsCost);
+      }
+
+      const { effectiveTier } = calculateCustomerTier(
+        {
+          totalVisits: customer.totalVisits,
+          completedCards: newCompletedCards,
+          lastVisitDate: customer.lastVisitDate,
+          manualTierOverride: customer.manualTierOverride,
+          tier: customer.tier,
+        },
+        state.config.tierConfig,
+        state.config.type
+      );
+
+      const newTransaction: Transaction = {
+        id: crypto.randomUUID(),
+        date: txDate,
+        customerId: customer.id,
+        branchId: branch?.id,
+        employeeId: employeeId || undefined,
+        rewardId: tokenRecord.reward_id,
+        type: 'CANJE',
+        amount: 0,
+        pointsChange: -pointsCost,
+        stampsChange: -(customer.stamps - newStamps),
+        hash: txHash,
+      };
+
+      // 6. Actualizar Supabase
+      await supabase
+        .from('loyalty_customers')
+        .update({
+          dni: customer.dni,
+          points: newPoints,
+          stamps: newStamps,
+          tier: effectiveTier,
+          completed_cards: newCompletedCards,
+          claimed_rewards: newClaimedRewards,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', customer.id);
+
+      await supabase.from('loyalty_transactions').insert({
+        workspace_id: tokenRecord.workspace_id,
+        customer_id: customer.id,
+        branch_id: branch?.id || null,
+        employee_id: employeeId || null,
+        reward_id: tokenRecord.reward_id || null,
+        type: 'CANJE',
+        amount: 0,
+        points_change: -pointsCost,
+        stamps_change: -(customer.stamps - newStamps),
+        hash: txHash,
+      });
+
+      // 7. Marcar token como REDEEMED
+      await supabase
+        .from('loyalty_redemption_tokens')
+        .update({
+          status: 'REDEEMED',
+          redeemed_at: txDate,
+        })
+        .eq('id', tokenRecord.id);
+
+      // 8. Actualizar estado local
+      set({
+        customers: state.customers.map((c) =>
+          c.id === customer.id
+            ? {
+                ...c,
+                points: newPoints,
+                stamps: newStamps,
+                tier: effectiveTier,
+                completedCards: newCompletedCards,
+                claimedRewards: newClaimedRewards,
+              }
+            : c
+        ),
+        transactions: [newTransaction, ...state.transactions],
+      });
+
+      return {
+        success: true,
+        message: '¡Canje validado exitosamente!',
+        customerName: customer.name,
+        rewardName: tokenRecord.reward_name,
+        pointsCost,
+        stampsCost,
+        customerDni: customer.dni,
+      };
+    } catch (err: any) {
+      console.error('Error al validar token de canje:', err);
+      return { success: false, message: err?.message || 'Error al procesar el canje.' };
     }
   },
 }));
