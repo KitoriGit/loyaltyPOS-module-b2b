@@ -257,31 +257,31 @@ export function DashboardPuntos() {
             <div className="w-full h-64 my-2 relative">
               <svg className="w-full h-full overflow-visible" preserveAspectRatio="none" viewBox="0 0 600 220">
                 <defs>
-                  <linearGradient id="purpleGradient" x1="0" x2="0" y1="0" y2="1">
-                    <stop offset="0%" stopColor="#4f46e5" stopOpacity="0.22"></stop>
-                    <stop offset="100%" stopColor="#4f46e5" stopOpacity="0.00"></stop>
+                  <linearGradient id="forestGradient" x1="0" x2="0" y1="0" y2="1">
+                    <stop offset="0%" stopColor="#064e3b" stopOpacity="0.20"></stop>
+                    <stop offset="100%" stopColor="#064e3b" stopOpacity="0.00"></stop>
                   </linearGradient>
-                  <linearGradient id="mintGradient" x1="0" x2="0" y1="0" y2="1">
-                    <stop offset="0%" stopColor="#006c49" stopOpacity="0.15"></stop>
-                    <stop offset="100%" stopColor="#006c49" stopOpacity="0.00"></stop>
+                  <linearGradient id="amberGradient" x1="0" x2="0" y1="0" y2="1">
+                    <stop offset="0%" stopColor="#b45309" stopOpacity="0.18"></stop>
+                    <stop offset="100%" stopColor="#b45309" stopOpacity="0.00"></stop>
                   </linearGradient>
                 </defs>
-                <line stroke="#d3e4fe" strokeDasharray="3 3" strokeOpacity="0.5" x1="0" x2="600" y1="40" y2="40"></line>
-                <line stroke="#d3e4fe" strokeDasharray="3 3" strokeOpacity="0.5" x1="0" x2="600" y1="100" y2="100"></line>
-                <line stroke="#d3e4fe" strokeDasharray="3 3" strokeOpacity="0.5" x1="0" x2="600" y1="160" y2="160"></line>
-                <line stroke="#c7c4d8" strokeOpacity="0.4" x1="0" x2="600" y1="200" y2="200"></line>
-                <path d="M 30,130 C 130,115 170,105 230,85 C 320,60 380,45 450,30 C 510,18 550,15 570,10 L 570,200 L 30,200 Z" fill="url(#purpleGradient)"></path>
-                <path d="M 30,130 C 130,115 170,105 230,85 C 320,60 380,45 450,30 C 510,18 550,15 570,10" fill="none" stroke="#4f46e5" strokeLinecap="round" strokeWidth="3.5"></path>
-                <path d="M 30,180 C 130,170 170,160 230,145 C 320,130 380,115 450,100 C 510,90 550,85 570,80 L 570,200 L 30,200 Z" fill="url(#mintGradient)"></path>
-                <path d="M 30,180 C 130,170 170,160 230,145 C 320,130 380,115 450,100 C 510,90 550,85 570,80" fill="none" stroke="#006c49" strokeDasharray="4 2" strokeLinecap="round" strokeWidth="2.5"></path>
-                <circle cx="30" cy="130" fill="#4f46e5" r="4.5" className="shadow-sm"></circle>
-                <circle cx="230" cy="85" fill="#4f46e5" r="4.5"></circle>
-                <circle cx="450" cy="30" fill="#4f46e5" r="4.5"></circle>
-                <circle cx="570" cy="10" fill="#4f46e5" r="5"></circle>
-                <circle cx="30" cy="180" fill="#006c49" r="3.5"></circle>
-                <circle cx="230" cy="145" fill="#006c49" r="3.5"></circle>
-                <circle cx="450" cy="100" fill="#006c49" r="3.5"></circle>
-                <circle cx="570" cy="80" fill="#006c49" r="4"></circle>
+                <line stroke="#e8e2da" strokeDasharray="3 3" strokeOpacity="0.8" x1="0" x2="600" y1="40" y2="40"></line>
+                <line stroke="#e8e2da" strokeDasharray="3 3" strokeOpacity="0.8" x1="0" x2="600" y1="100" y2="100"></line>
+                <line stroke="#e8e2da" strokeDasharray="3 3" strokeOpacity="0.8" x1="0" x2="600" y1="160" y2="160"></line>
+                <line stroke="#e8e2da" strokeOpacity="0.8" x1="0" x2="600" y1="200" y2="200"></line>
+                <path d="M 30,130 C 130,115 170,105 230,85 C 320,60 380,45 450,30 C 510,18 550,15 570,10 L 570,200 L 30,200 Z" fill="url(#forestGradient)"></path>
+                <path d="M 30,130 C 130,115 170,105 230,85 C 320,60 380,45 450,30 C 510,18 550,15 570,10" fill="none" stroke="#064e3b" strokeLinecap="round" strokeWidth="3.5"></path>
+                <path d="M 30,180 C 130,170 170,160 230,145 C 320,130 380,115 450,100 C 510,90 550,85 570,80 L 570,200 L 30,200 Z" fill="url(#amberGradient)"></path>
+                <path d="M 30,180 C 130,170 170,160 230,145 C 320,130 380,115 450,100 C 510,90 550,85 570,80" fill="none" stroke="#b45309" strokeDasharray="4 2" strokeLinecap="round" strokeWidth="2.5"></path>
+                <circle cx="30" cy="130" fill="#064e3b" r="4.5" className="shadow-xs"></circle>
+                <circle cx="230" cy="85" fill="#064e3b" r="4.5"></circle>
+                <circle cx="450" cy="30" fill="#064e3b" r="4.5"></circle>
+                <circle cx="570" cy="10" fill="#064e3b" r="5"></circle>
+                <circle cx="30" cy="180" fill="#b45309" r="3.5"></circle>
+                <circle cx="230" cy="145" fill="#b45309" r="3.5"></circle>
+                <circle cx="450" cy="100" fill="#b45309" r="3.5"></circle>
+                <circle cx="570" cy="80" fill="#b45309" r="4"></circle>
               </svg>
             </div>
             

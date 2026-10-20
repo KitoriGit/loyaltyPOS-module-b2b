@@ -85,14 +85,14 @@ export function ProgramConfig() {
         <div className="flex flex-col">
           <div className="flex items-center gap-space-sm">
             <h1 className="font-display text-3xl font-bold text-on-surface tracking-tight">Motor de Retención</h1>
-            <span className="px-2 py-0.5 rounded-full bg-primary-fixed text-on-primary-fixed font-mono text-xs font-semibold">v3.0</span>
+            <span className="px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-900 border border-amber-300 font-mono text-xs font-bold">v3.0 Craft</span>
           </div>
           <p className="font-sans text-sm text-on-surface-variant mt-1">Configura las reglas de fidelización, tiers de clientes y recompensas para tus terminales activas.</p>
         </div>
       </header>
 
       {/* CARD 1: Modalidad del Programa */}
-      <section className="bg-surface-container-lowest rounded-2xl p-space-lg shadow-sm flex flex-col gap-space-md">
+      <section className="bg-surface-container-lowest rounded-2xl p-space-lg shadow-xs border border-outline-variant/60 flex flex-col gap-space-md">
         <div>
           <div className="flex items-center gap-space-xs">
             <SlidersHorizontal className="text-primary w-5 h-5" />
@@ -105,30 +105,30 @@ export function ProgramConfig() {
           {/* Opción 1: Programa de Puntos */}
           <div 
             onClick={() => setConfig({ type: 'puntos' })}
-            className={`relative flex flex-col justify-between p-space-md rounded-xl transition-all duration-200 cursor-pointer shadow-sm group ${
+            className={`relative flex flex-col justify-between p-space-md rounded-xl transition-all duration-200 cursor-pointer shadow-xs group ${
               isPuntos 
                 ? 'bg-surface-container-low border-2 border-primary' 
-                : 'bg-surface-container-lowest hover:bg-surface-container-low opacity-75 border-2 border-transparent'
+                : 'bg-surface-container-lowest hover:bg-surface-container-low opacity-75 border-2 border-outline-variant/40'
             }`}
           >
             <div className="flex items-start justify-between gap-space-sm">
-              <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-colors ${
-                isPuntos ? 'bg-primary text-on-primary shadow-sm' : 'bg-surface-container-high text-on-surface-variant group-hover:text-on-surface'
+              <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-colors shadow-xs ${
+                isPuntos ? 'bg-primary text-on-primary' : 'bg-surface-container text-on-surface-variant group-hover:text-on-surface'
               }`}>
                 <Star className="w-5 h-5" />
               </div>
               <div className={`w-6 h-6 rounded-full flex items-center justify-center transition-colors ${
-                isPuntos ? 'bg-primary text-on-primary shadow-sm' : 'bg-surface-container-high text-outline'
+                isPuntos ? 'bg-primary text-on-primary shadow-xs' : 'bg-surface-container text-outline'
               }`}>
-                {isPuntos ? <Check className="w-4 h-4" /> : <span className="w-2.5 h-2.5 rounded-full bg-surface-container-lowest"></span>}
+                {isPuntos ? <Check className="w-4 h-4 stroke-[3]" /> : <span className="w-2 rounded-full bg-outline/30"></span>}
               </div>
             </div>
             
             <div className="mt-space-md">
               <div className="flex items-center gap-2">
                 <h3 className="font-display text-lg font-bold text-on-surface">Programa de Puntos</h3>
-                <span className={`px-2 py-0.5 rounded-md font-mono text-[11px] font-medium ${
-                  isPuntos ? 'bg-secondary-container text-on-secondary-container' : 'bg-surface-container-high text-on-surface-variant'
+                <span className={`px-2 py-0.5 rounded-md font-mono text-[11px] font-bold ${
+                  isPuntos ? 'bg-emerald-100 text-emerald-900 border border-emerald-300' : 'bg-surface-container text-on-surface-variant'
                 }`}>
                   {isPuntos ? 'Activo' : 'Inactivo'}
                 </span>
@@ -139,10 +139,10 @@ export function ProgramConfig() {
             </div>
             
             <div className="mt-space-md pt-space-sm">
-              <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full font-mono text-[11px] ${
-                isPuntos ? 'bg-primary-fixed text-on-primary-fixed' : 'bg-surface-container text-on-surface-variant'
+              <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full font-mono text-[11px] font-semibold ${
+                isPuntos ? 'bg-emerald-50 text-emerald-900 border border-emerald-200' : 'bg-surface-container text-on-surface-variant'
               }`}>
-                <ThumbsUp className="w-3.5 h-3.5" />
+                <ThumbsUp className="w-3.5 h-3.5 text-secondary" />
                 Recomendado para retail y gastronomía
               </span>
             </div>
@@ -151,45 +151,45 @@ export function ProgramConfig() {
           {/* Opción 2: Tarjeta de Sellos */}
           <div 
             onClick={() => setConfig({ type: 'sellos' })}
-            className={`relative flex flex-col justify-between p-space-md rounded-xl transition-all duration-200 cursor-pointer shadow-sm group ${
+            className={`relative flex flex-col justify-between p-space-md rounded-xl transition-all duration-200 cursor-pointer shadow-xs group ${
               isSellos 
                 ? 'bg-surface-container-low border-2 border-primary' 
-                : 'bg-surface-container-lowest hover:bg-surface-container-low opacity-75 border-2 border-transparent'
+                : 'bg-surface-container-lowest hover:bg-surface-container-low opacity-75 border-2 border-outline-variant/40'
             }`}
           >
             <div className="flex items-start justify-between gap-space-sm">
-              <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-colors ${
-                isSellos ? 'bg-primary text-on-primary shadow-sm' : 'bg-surface-container-high text-on-surface-variant group-hover:text-on-surface'
+              <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-colors shadow-xs ${
+                isSellos ? 'bg-primary text-on-primary' : 'bg-surface-container text-on-surface-variant group-hover:text-on-surface'
               }`}>
-                <Award className="w-5 h-5" />
+                <Coffee className="w-5 h-5" />
               </div>
               <div className={`w-6 h-6 rounded-full flex items-center justify-center transition-colors ${
-                isSellos ? 'bg-primary text-on-primary shadow-sm' : 'bg-surface-container-high text-outline'
+                isSellos ? 'bg-primary text-on-primary shadow-xs' : 'bg-surface-container text-outline'
               }`}>
-                {isSellos ? <Check className="w-4 h-4" /> : <span className="w-2.5 h-2.5 rounded-full bg-surface-container-lowest"></span>}
+                {isSellos ? <Check className="w-4 h-4 stroke-[3]" /> : <span className="w-2 rounded-full bg-outline/30"></span>}
               </div>
             </div>
             
             <div className="mt-space-md">
               <div className="flex items-center gap-2">
                 <h3 className="font-display text-lg font-bold text-on-surface">Tarjeta de Sellos</h3>
-                <span className={`px-2 py-0.5 rounded-md font-mono text-[11px] font-medium ${
-                  isSellos ? 'bg-secondary-container text-on-secondary-container' : 'bg-surface-container-high text-on-surface-variant'
+                <span className={`px-2 py-0.5 rounded-md font-mono text-[11px] font-bold ${
+                  isSellos ? 'bg-emerald-100 text-emerald-900 border border-emerald-300' : 'bg-surface-container text-on-surface-variant'
                 }`}>
                   {isSellos ? 'Activo' : 'Inactivo'}
                 </span>
               </div>
               <p className="font-sans text-xs text-on-surface-variant mt-1.5 leading-relaxed">
-                Otorga 1 sello digital por visita recurrente o por alcanzar un consumo mínimo fijado en caja.
+                Otorga sellos digitales con estética de tinta artesanal por visita o consumo fijado en caja.
               </p>
             </div>
             
             <div className="mt-space-md pt-space-sm">
-              <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full font-mono text-[11px] ${
-                isSellos ? 'bg-primary-fixed text-on-primary-fixed' : 'bg-surface-container text-on-surface-variant'
+              <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full font-mono text-[11px] font-semibold ${
+                isSellos ? 'bg-amber-50 text-amber-900 border border-amber-200' : 'bg-surface-container text-on-surface-variant'
               }`}>
-                <Coffee className="w-3.5 h-3.5" />
-                Ideal para cafeterías y servicios
+                <Coffee className="w-3.5 h-3.5 text-secondary" />
+                Ideal para cafeterías de especialidad y bakery
               </span>
             </div>
           </div>
@@ -197,29 +197,29 @@ export function ProgramConfig() {
       </section>
 
       {/* CARD 2: Regla de Acumulación */}
-      <section className={`bg-surface-container-lowest rounded-2xl p-space-lg shadow-sm flex flex-col gap-space-md transition-opacity ${!isPuntos ? 'opacity-50 pointer-events-none' : ''}`}>
+      <section className={`bg-surface-container-lowest rounded-2xl p-space-lg shadow-xs border border-outline-variant/60 flex flex-col gap-space-md transition-opacity ${!isPuntos ? 'opacity-50 pointer-events-none' : ''}`}>
         {!isPuntos && (
-          <div className="flex items-center gap-space-sm px-space-md py-2.5 rounded-xl bg-surface-container-high/60 border border-outline-variant/40 text-on-surface-variant font-sans text-xs">
+          <div className="flex items-center gap-space-sm px-space-md py-2.5 rounded-xl bg-surface-container text-on-surface-variant font-sans text-xs border border-outline-variant/50">
             <Lock className="w-4.5 h-4.5 text-outline" />
-            <span>Esta configuración se habilita con la opción <strong>"Programa de Puntos"</strong>. En modo sellos se otorga 1 sello por cada compra registrada.</span>
+            <span>Esta configuración se habilita con la opción <strong>"Programa de Puntos"</strong>. En modo sellos se otorga 1 sello por cada visita registrada.</span>
           </div>
         )}
         
         <div>
           <div className="flex items-center gap-space-xs">
-            <Coins className="w-5 h-5 text-outline" />
+            <Coins className="w-5 h-5 text-secondary" />
             <h2 className="font-display text-lg font-bold text-on-surface">Regla de Acumulación</h2>
           </div>
           <p className="font-sans text-xs text-on-surface-variant mt-0.5">Define el ratio de conversión directa de gasto a puntos en caja.</p>
         </div>
 
-        <div className="bg-surface-container-low rounded-xl p-space-md sm:p-space-lg flex flex-col gap-space-sm">
+        <div className="bg-surface-container-low rounded-xl p-space-md sm:p-space-lg flex flex-col gap-space-sm border border-outline-variant/40">
           <div className="flex flex-wrap items-center gap-2 font-sans text-sm text-on-surface">
             <span className="font-medium whitespace-nowrap">Por cada</span>
             <div className="relative inline-flex items-center">
               <span className="absolute left-2.5 font-mono text-xs text-on-surface-variant font-semibold">AR$</span>
               <input 
-                className="w-24 pl-8 pr-2 py-1.5 rounded-lg font-mono text-base font-bold bg-surface-container-lowest shadow-sm text-center outline-none focus:ring-2 focus:ring-primary/20 focus:bg-surface-bright transition text-on-surface" 
+                className="w-24 pl-8 pr-2 py-1.5 rounded-lg font-mono text-base font-bold bg-surface-container-lowest border border-outline-variant/50 shadow-xs text-center outline-none focus:border-primary transition text-on-surface" 
                 type="number" 
                 value={(config.spendAmount ?? config.pointsPerArs) === 0 ? '' : (config.spendAmount ?? config.pointsPerArs ?? 100)} 
                 onChange={(e) => {
@@ -232,7 +232,7 @@ export function ProgramConfig() {
             <span className="font-medium whitespace-nowrap">gastados en el local, el sistema otorga</span>
             <div className="relative inline-flex items-center">
               <input 
-                className="w-16 px-2 py-1.5 rounded-lg font-mono text-base font-bold bg-surface-container-lowest shadow-sm text-center outline-none focus:ring-2 focus:ring-primary/20 focus:bg-surface-bright transition text-on-surface" 
+                className="w-16 px-2 py-1.5 rounded-lg font-mono text-base font-bold bg-surface-container-lowest border border-outline-variant/50 shadow-xs text-center outline-none focus:border-primary transition text-on-surface" 
                 type="number" 
                 value={config.pointsAwarded === 0 ? '' : (config.pointsAwarded ?? 20)} 
                 onChange={(e) => setConfig({ pointsAwarded: e.target.value === '' ? 0 : Number(e.target.value) })}
@@ -242,21 +242,21 @@ export function ProgramConfig() {
             <span className="font-medium whitespace-nowrap">puntos.</span>
           </div>
 
-          <div className="flex items-center gap-space-sm p-space-sm px-space-md rounded-xl bg-surface-container-high/60 text-on-surface-variant mt-1">
-            <Lightbulb className="w-4.5 h-4.5 shrink-0 text-outline" />
+          <div className="flex items-center gap-space-sm p-space-sm px-space-md rounded-xl bg-surface-container-lowest border border-outline-variant/40 text-on-surface-variant mt-1">
+            <Lightbulb className="w-4.5 h-4.5 shrink-0 text-secondary" />
             <p className="font-sans text-xs leading-normal">
-              <span className="font-semibold text-on-surface">Ejemplo en POS:</span> Un ticket de <span className="font-mono text-xs font-semibold text-on-surface">AR$ 15,000</span> acreditará automáticamente <span className="font-mono text-xs font-bold text-secondary">+{Math.floor((15000 / ((config.spendAmount || config.pointsPerArs) || 100)) * (config.pointsAwarded ?? 20)).toLocaleString()} pts</span> en la billetera del cliente.
+              <span className="font-semibold text-on-surface">Ejemplo en POS:</span> Un ticket de <span className="font-mono text-xs font-semibold text-on-surface">AR$ 15,000</span> acreditará automáticamente <span className="font-mono text-xs font-bold text-primary">+{Math.floor((15000 / ((config.spendAmount || config.pointsPerArs) || 100)) * (config.pointsAwarded ?? 20)).toLocaleString()} pts</span> en la billetera del cliente.
             </p>
           </div>
         </div>
       </section>
 
-      {/* CARD 3: Tiers de Clientes (Bronze, Plata, Oro) */}
-      <section className="bg-surface-container-lowest rounded-2xl p-space-lg shadow-sm flex flex-col gap-space-md border border-primary/10">
+      {/* CARD 3: Tiers de Clientes (Bronze, Plata, Oro VIP) */}
+      <section className="bg-surface-container-lowest rounded-2xl p-space-lg shadow-xs border border-outline-variant/60 flex flex-col gap-space-md">
         <div className="flex items-center justify-between gap-space-xs">
           <div>
             <div className="flex items-center gap-space-xs">
-              <Crown className="w-5 h-5 text-amber-500" />
+              <Crown className="w-5 h-5 text-secondary" />
               <h2 className="font-display text-lg font-bold text-on-surface">Niveles de Clientes (Tiers)</h2>
             </div>
             <p className="font-sans text-xs text-on-surface-variant mt-0.5">
@@ -265,18 +265,18 @@ export function ProgramConfig() {
                 : 'Configura las tarjetas de sellos completadas para subir de nivel y el acelerador de doble sello.'}
             </p>
           </div>
-          <span className="px-2.5 py-1 rounded-full bg-amber-500/10 text-amber-800 font-mono text-[11px] font-bold border border-amber-500/20">
+          <span className="px-2.5 py-1 rounded-full bg-amber-50 text-amber-900 font-mono text-[11px] font-bold border border-amber-300">
             Bronze • Plata • Oro
           </span>
         </div>
 
-        {/* 3.1 Umbrales de Ascenso: Visitas para Puntos, Tarjetas completadas para Sellos */}
+        {/* 3.1 Umbrales de Ascenso */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-space-md">
           {/* Nivel Plata */}
-          <div className="p-4 rounded-xl bg-surface-container-low flex flex-col justify-between gap-3 border border-outline-variant/30">
+          <div className="p-4 rounded-xl bg-surface-container-low flex flex-col justify-between gap-3 border border-outline-variant/50">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <span className="w-7 h-7 rounded-lg bg-slate-200 text-slate-700 flex items-center justify-center font-bold text-xs shadow-sm">
+                <span className="w-7 h-7 rounded-lg bg-[#f1f3f5] text-[#334155] border border-[#94a3b8]/60 flex items-center justify-center font-bold text-xs shadow-xs">
                   🥈
                 </span>
                 <div>
@@ -284,7 +284,7 @@ export function ProgramConfig() {
                   <span className="font-sans text-[11px] text-on-surface-variant">Cliente Habitual</span>
                 </div>
               </div>
-              <span className="font-mono text-xs font-semibold px-2 py-0.5 rounded bg-slate-300/60 text-slate-800">
+              <span className="font-mono text-xs font-semibold px-2 py-0.5 rounded bg-surface-container text-[#334155] border border-outline-variant/40">
                 Tier 2
               </span>
             </div>
@@ -297,7 +297,7 @@ export function ProgramConfig() {
                   min="1"
                   value={config.tierConfig.silverVisitsThreshold}
                   onChange={(e) => setTierConfig({ silverVisitsThreshold: Math.max(1, Number(e.target.value)) })}
-                  className="w-16 px-2 py-1 rounded-lg font-mono text-sm font-bold bg-surface-container-lowest text-center shadow-sm outline-none focus:ring-2 focus:ring-primary/20 text-on-surface"
+                  className="w-16 px-2 py-1 rounded-lg font-mono text-sm font-bold bg-surface-container-lowest border border-outline-variant/50 text-center shadow-xs outline-none focus:border-primary text-on-surface"
                 />
                 <span className="font-medium">visitas registradas.</span>
               </div>
@@ -309,7 +309,7 @@ export function ProgramConfig() {
                   min="1"
                   value={config.tierConfig.silverCardsThreshold ?? 1}
                   onChange={(e) => setTierConfig({ silverCardsThreshold: Math.max(1, Number(e.target.value)) })}
-                  className="w-16 px-2 py-1 rounded-lg font-mono text-sm font-bold bg-surface-container-lowest text-center shadow-sm outline-none focus:ring-2 focus:ring-primary/20 text-on-surface"
+                  className="w-16 px-2 py-1 rounded-lg font-mono text-sm font-bold bg-surface-container-lowest border border-outline-variant/50 text-center shadow-xs outline-none focus:border-primary text-on-surface"
                 />
                 <span className="font-medium">{(config.tierConfig.silverCardsThreshold ?? 1) === 1 ? 'tarjeta de sellos.' : 'tarjetas de sellos.'}</span>
               </div>
@@ -317,10 +317,10 @@ export function ProgramConfig() {
           </div>
 
           {/* Nivel Oro */}
-          <div className="p-4 rounded-xl bg-surface-container-low flex flex-col justify-between gap-3 border border-amber-500/30">
+          <div className="p-4 rounded-xl bg-surface-container-low flex flex-col justify-between gap-3 border border-amber-300">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <span className="w-7 h-7 rounded-lg bg-amber-200 text-amber-900 flex items-center justify-center font-bold text-xs shadow-sm">
+                <span className="w-7 h-7 rounded-lg bg-[#fef3c7] text-[#92400e] border border-[#f59e0b]/50 flex items-center justify-center font-bold text-xs shadow-xs">
                   🥇
                 </span>
                 <div>
@@ -328,7 +328,7 @@ export function ProgramConfig() {
                   <span className="font-sans text-[11px] text-on-surface-variant">Cliente Más Valioso</span>
                 </div>
               </div>
-              <span className="font-mono text-xs font-semibold px-2 py-0.5 rounded bg-amber-300/60 text-amber-900">
+              <span className="font-mono text-xs font-semibold px-2 py-0.5 rounded bg-amber-100 text-[#92400e] border border-amber-300">
                 Tier 3 (VIP)
               </span>
             </div>
@@ -341,7 +341,7 @@ export function ProgramConfig() {
                   min="2"
                   value={config.tierConfig.goldVisitsThreshold}
                   onChange={(e) => setTierConfig({ goldVisitsThreshold: Math.max(2, Number(e.target.value)) })}
-                  className="w-16 px-2 py-1 rounded-lg font-mono text-sm font-bold bg-surface-container-lowest text-center shadow-sm outline-none focus:ring-2 focus:ring-primary/20 text-on-surface"
+                  className="w-16 px-2 py-1 rounded-lg font-mono text-sm font-bold bg-surface-container-lowest border border-outline-variant/50 text-center shadow-xs outline-none focus:border-primary text-on-surface"
                 />
                 <span className="font-medium">visitas registradas.</span>
               </div>
@@ -353,7 +353,7 @@ export function ProgramConfig() {
                   min="2"
                   value={config.tierConfig.goldCardsThreshold ?? 2}
                   onChange={(e) => setTierConfig({ goldCardsThreshold: Math.max(2, Number(e.target.value)) })}
-                  className="w-16 px-2 py-1 rounded-lg font-mono text-sm font-bold bg-surface-container-lowest text-center shadow-sm outline-none focus:ring-2 focus:ring-primary/20 text-on-surface"
+                  className="w-16 px-2 py-1 rounded-lg font-mono text-sm font-bold bg-surface-container-lowest border border-outline-variant/50 text-center shadow-xs outline-none focus:border-primary text-on-surface"
                 />
                 <span className="font-medium">tarjetas de sellos.</span>
               </div>
@@ -361,18 +361,18 @@ export function ProgramConfig() {
           </div>
         </div>
 
-        {/* 3.2 Acelerador de Puntos (Doble Puntos por Ticket de Compra) - Solo en modo Puntos */}
+        {/* 3.2 Acelerador de Puntos (Doble Puntos por Consumo) */}
         {isPuntos && (
-          <div className="p-4 rounded-xl bg-surface-container-low flex flex-col gap-3 border border-primary/20">
+          <div className="p-4 rounded-xl bg-surface-container-low flex flex-col gap-3 border border-outline-variant/50">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2.5">
-                <div className="w-9 h-9 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
-                  <Zap className="w-5 h-5 text-primary fill-primary" />
+                <div className="w-9 h-9 rounded-lg bg-emerald-50 text-primary flex items-center justify-center shrink-0 border border-emerald-200">
+                  <Zap className="w-5 h-5 text-secondary fill-secondary" />
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
                     <h4 className="font-display text-sm font-bold text-on-surface">Acelerador: Doble Puntos por Consumo</h4>
-                    <span className="px-2 py-0.5 rounded-full bg-primary-container text-on-primary-container font-mono text-[10px] font-bold">
+                    <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-900 font-mono text-[10px] font-bold border border-emerald-300">
                       2x Puntos
                     </span>
                   </div>
@@ -385,16 +385,16 @@ export function ProgramConfig() {
               <button
                 type="button"
                 onClick={() => setTierConfig({ doublePointsEnabled: !config.tierConfig.doublePointsEnabled })}
-                className={`w-12 h-7 rounded-full p-1 flex items-center transition-colors shrink-0 ${
-                  config.tierConfig.doublePointsEnabled ? 'bg-primary justify-end' : 'bg-surface-container-high justify-start'
+                className={`w-12 h-7 rounded-full p-1 flex items-center transition-colors shrink-0 cursor-pointer ${
+                  config.tierConfig.doublePointsEnabled ? 'bg-primary justify-end' : 'bg-surface-container justify-start'
                 }`}
               >
-                <span className="w-5 h-5 rounded-full bg-surface-container-lowest shadow-sm"></span>
+                <span className="w-5 h-5 rounded-full bg-surface-container-lowest shadow-xs"></span>
               </button>
             </div>
 
             {config.tierConfig.doublePointsEnabled && (
-              <div className="mt-1 pt-3 border-t border-outline-variant/30 flex flex-wrap items-center gap-2 font-sans text-xs text-on-surface animate-in fade-in duration-200">
+              <div className="mt-1 pt-3 border-t border-outline-variant/40 flex flex-wrap items-center gap-2 font-sans text-xs text-on-surface animate-in fade-in duration-200">
                 <span>Si el ticket de compra es igual o superior a</span>
                 <div className="relative inline-flex items-center">
                   <span className="absolute left-2.5 font-mono text-xs text-on-surface-variant font-semibold">AR$</span>
@@ -404,7 +404,7 @@ export function ProgramConfig() {
                     min="1000"
                     value={config.tierConfig.doublePointsMinSpend ?? 20000}
                     onChange={(e) => setTierConfig({ doublePointsMinSpend: Math.max(0, Number(e.target.value)) })}
-                    className="w-28 pl-8 pr-2 py-1 rounded-lg font-mono text-sm font-bold bg-surface-container-lowest text-center shadow-sm outline-none focus:ring-2 focus:ring-primary/20 text-on-surface"
+                    className="w-28 pl-8 pr-2 py-1 rounded-lg font-mono text-sm font-bold bg-surface-container-lowest border border-outline-variant/50 text-center shadow-xs outline-none focus:border-primary text-on-surface"
                   />
                 </div>
                 <span className="font-semibold text-primary">duplica automáticamente los puntos otorgados en caja (2x).</span>
@@ -413,18 +413,18 @@ export function ProgramConfig() {
           </div>
         )}
 
-        {/* 3.3 Acelerador de Sellos (Doble Sello por Ticket de Compra) - Solo en modo Sellos */}
+        {/* 3.3 Acelerador de Sellos (Doble Sello por Consumo) */}
         {isSellos && (
-          <div className="p-4 rounded-xl bg-surface-container-low flex flex-col gap-3 border border-secondary/20">
+          <div className="p-4 rounded-xl bg-surface-container-low flex flex-col gap-3 border border-outline-variant/50">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2.5">
-                <div className="w-9 h-9 rounded-lg bg-secondary/10 text-secondary flex items-center justify-center shrink-0">
+                <div className="w-9 h-9 rounded-lg bg-amber-50 text-secondary flex items-center justify-center shrink-0 border border-amber-200">
                   <Zap className="w-5 h-5 text-secondary fill-secondary" />
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
                     <h4 className="font-display text-sm font-bold text-on-surface">Acelerador: Doble Sello por Consumo</h4>
-                    <span className="px-2 py-0.5 rounded-full bg-secondary-container text-on-secondary-container font-mono text-[10px] font-bold">
+                    <span className="px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 font-mono text-[10px] font-bold border border-amber-300">
                       2x Sellos
                     </span>
                   </div>
@@ -437,16 +437,16 @@ export function ProgramConfig() {
               <button
                 type="button"
                 onClick={() => setTierConfig({ doubleStampEnabled: !config.tierConfig.doubleStampEnabled })}
-                className={`w-12 h-7 rounded-full p-1 flex items-center transition-colors shrink-0 ${
-                  config.tierConfig.doubleStampEnabled ? 'bg-secondary justify-end' : 'bg-surface-container-high justify-start'
+                className={`w-12 h-7 rounded-full p-1 flex items-center transition-colors shrink-0 cursor-pointer ${
+                  config.tierConfig.doubleStampEnabled ? 'bg-secondary justify-end' : 'bg-surface-container justify-start'
                 }`}
               >
-                <span className="w-5 h-5 rounded-full bg-surface-container-lowest shadow-sm"></span>
+                <span className="w-5 h-5 rounded-full bg-surface-container-lowest shadow-xs"></span>
               </button>
             </div>
 
             {config.tierConfig.doubleStampEnabled && (
-              <div className="mt-1 pt-3 border-t border-outline-variant/30 flex flex-wrap items-center gap-2 font-sans text-xs text-on-surface animate-in fade-in duration-200">
+              <div className="mt-1 pt-3 border-t border-outline-variant/40 flex flex-wrap items-center gap-2 font-sans text-xs text-on-surface animate-in fade-in duration-200">
                 <span>Si el ticket de compra es igual o superior a</span>
                 <div className="relative inline-flex items-center">
                   <span className="absolute left-2.5 font-mono text-xs text-on-surface-variant font-semibold">AR$</span>
@@ -456,7 +456,7 @@ export function ProgramConfig() {
                     min="1000"
                     value={config.tierConfig.doubleStampMinSpend}
                     onChange={(e) => setTierConfig({ doubleStampMinSpend: Math.max(0, Number(e.target.value)) })}
-                    className="w-28 pl-8 pr-2 py-1 rounded-lg font-mono text-sm font-bold bg-surface-container-lowest text-center shadow-sm outline-none focus:ring-2 focus:ring-secondary/20 text-on-surface"
+                    className="w-28 pl-8 pr-2 py-1 rounded-lg font-mono text-sm font-bold bg-surface-container-lowest border border-outline-variant/50 text-center shadow-xs outline-none focus:border-secondary text-on-surface"
                   />
                 </div>
                 <span className="font-semibold text-secondary">otorga automáticamente 2 sellos en caja.</span>
@@ -465,10 +465,10 @@ export function ProgramConfig() {
           </div>
         )}
 
-        {/* 3.3 Regla de Inactividad (Pérdida de Nivel) */}
-        <div className="p-4 rounded-xl bg-surface-container-low flex flex-col sm:flex-row sm:items-center justify-between gap-space-md">
+        {/* 3.4 Regla de Inactividad (Pérdida de Nivel) */}
+        <div className="p-4 rounded-xl bg-surface-container-low flex flex-col sm:flex-row sm:items-center justify-between gap-space-md border border-outline-variant/50">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-surface-container-high text-on-surface-variant flex items-center justify-center shrink-0">
+            <div className="w-10 h-10 rounded-xl bg-surface-container text-on-surface-variant flex items-center justify-center shrink-0 border border-outline-variant/40">
               <CalendarClock className="w-5 h-5 text-outline" />
             </div>
             <div>
@@ -486,7 +486,7 @@ export function ProgramConfig() {
               min="5"
               value={config.tierConfig.inactivityDaysDowngrade}
               onChange={(e) => setTierConfig({ inactivityDaysDowngrade: Math.max(5, Number(e.target.value)) })}
-              className="w-16 px-2 py-1 rounded-lg font-mono text-sm font-bold bg-surface-container-lowest text-center shadow-sm outline-none focus:ring-2 focus:ring-primary/20 text-on-surface"
+              className="w-16 px-2 py-1 rounded-lg font-mono text-sm font-bold bg-surface-container-lowest border border-outline-variant/50 text-center shadow-xs outline-none focus:border-primary text-on-surface"
             />
             <span className="font-sans text-xs font-medium text-on-surface">días sin visita.</span>
           </div>
@@ -494,27 +494,27 @@ export function ProgramConfig() {
       </section>
 
       {/* CARD 4: Catálogo de Recompensas Segmentadas por Tier */}
-      <section className="bg-surface-container-lowest rounded-2xl p-space-lg shadow-sm flex flex-col gap-space-md">
+      <section className="bg-surface-container-lowest rounded-2xl p-space-lg shadow-xs border border-outline-variant/60 flex flex-col gap-space-md">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-space-xs">
           <div className="flex items-center gap-space-xs">
-            <Ticket className="w-5 h-5 text-primary" />
+            <Ticket className="w-5 h-5 text-secondary" />
             <h2 className="font-display text-lg font-bold text-on-surface">Catálogo de Recompensas por Nivel</h2>
           </div>
           <span className="font-mono text-[11px] text-on-surface-variant flex items-center gap-1">
-            <Award className="w-4 h-4" /> 
+            <Award className="w-4 h-4 text-secondary" /> 
             Recompensas jerárquicas configuradas para caja
           </span>
         </div>
 
         {/* Filtros de Pestaña por Tier */}
-        <div className="flex items-center gap-1.5 p-1 rounded-xl bg-surface-container-low overflow-x-auto">
+        <div className="flex items-center gap-1.5 p-1 rounded-xl bg-surface-container-low border border-outline-variant/40 overflow-x-auto">
           {isPuntos && (
             <button
               type="button"
               onClick={() => setSelectedTierFilter('ALL')}
-              className={`px-3 py-1.5 rounded-lg font-sans text-xs font-semibold transition-all shrink-0 ${
+              className={`px-3 py-1.5 rounded-lg font-sans text-xs font-semibold transition-all shrink-0 cursor-pointer ${
                 selectedTierFilter === 'ALL'
-                  ? 'bg-surface-container-lowest text-primary shadow-sm'
+                  ? 'bg-surface-container-lowest text-primary shadow-xs border border-outline-variant/40'
                   : 'text-on-surface-variant hover:text-on-surface'
               }`}
             >
@@ -524,9 +524,9 @@ export function ProgramConfig() {
           <button
             type="button"
             onClick={() => setSelectedTierFilter('BRONZE')}
-            className={`px-3 py-1.5 rounded-lg font-sans text-xs font-semibold transition-all flex items-center gap-1 shrink-0 ${
+            className={`px-3 py-1.5 rounded-lg font-sans text-xs font-semibold transition-all flex items-center gap-1 shrink-0 cursor-pointer ${
               selectedTierFilter === 'BRONZE'
-                ? 'bg-amber-100 text-amber-900 shadow-sm border border-amber-300'
+                ? 'bg-[#f5e6d3] text-[#78350f] shadow-xs border border-[#d97706]/50'
                 : 'text-on-surface-variant hover:text-on-surface'
             }`}
           >
@@ -535,9 +535,9 @@ export function ProgramConfig() {
           <button
             type="button"
             onClick={() => setSelectedTierFilter('SILVER')}
-            className={`px-3 py-1.5 rounded-lg font-sans text-xs font-semibold transition-all flex items-center gap-1 shrink-0 ${
+            className={`px-3 py-1.5 rounded-lg font-sans text-xs font-semibold transition-all flex items-center gap-1 shrink-0 cursor-pointer ${
               selectedTierFilter === 'SILVER'
-                ? 'bg-slate-200 text-slate-800 shadow-sm border border-slate-300'
+                ? 'bg-[#f1f3f5] text-[#334155] shadow-xs border border-[#94a3b8]/60'
                 : 'text-on-surface-variant hover:text-on-surface'
             }`}
           >
@@ -546,9 +546,9 @@ export function ProgramConfig() {
           <button
             type="button"
             onClick={() => setSelectedTierFilter('GOLD')}
-            className={`px-3 py-1.5 rounded-lg font-sans text-xs font-semibold transition-all flex items-center gap-1 shrink-0 ${
+            className={`px-3 py-1.5 rounded-lg font-sans text-xs font-semibold transition-all flex items-center gap-1 shrink-0 cursor-pointer ${
               selectedTierFilter === 'GOLD'
-                ? 'bg-amber-200 text-amber-900 shadow-sm border border-amber-400'
+                ? 'bg-[#fef3c7] text-[#92400e] shadow-xs border border-[#f59e0b]/50'
                 : 'text-on-surface-variant hover:text-on-surface'
             }`}
           >
@@ -558,9 +558,9 @@ export function ProgramConfig() {
             <button
               type="button"
               onClick={() => setSelectedTierFilter('ALL')}
-              className={`px-3 py-1.5 rounded-lg font-sans text-xs font-semibold transition-all shrink-0 ${
+              className={`px-3 py-1.5 rounded-lg font-sans text-xs font-semibold transition-all shrink-0 cursor-pointer ${
                 selectedTierFilter === 'ALL'
-                  ? 'bg-surface-container-lowest text-primary shadow-sm'
+                  ? 'bg-surface-container-lowest text-primary shadow-xs border border-outline-variant/40'
                   : 'text-on-surface-variant hover:text-on-surface'
               }`}
             >
@@ -571,23 +571,24 @@ export function ProgramConfig() {
 
         {/* Simulador Físico de Tarjeta para Programa de Sellos */}
         {isSellos && selectedTierFilter !== 'ALL' && (
-          <div className="p-4 rounded-xl bg-surface-container-low border border-outline-variant/30 flex flex-col gap-3">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div className="p-4 rounded-xl kraft-cardboard border-2 border-dashed border-[#cfbeaa] flex flex-col gap-3 shadow-xs">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#dfd2be] pb-2">
               <div className="flex items-center gap-2">
-                <span className="font-display text-sm font-bold text-on-surface">
-                  Simulación de Tarjeta Físico-Digital ({selectedTierFilter === 'GOLD' ? 'Oro VIP' : selectedTierFilter === 'SILVER' ? 'Plata' : 'Bronce'})
+                <Coffee className="w-4 h-4 text-[#78350f]" />
+                <span className="font-mono text-xs font-bold text-[#78350f] uppercase">
+                  Simulación de Tarjeta Artesanal ({selectedTierFilter === 'GOLD' ? 'Oro VIP' : selectedTierFilter === 'SILVER' ? 'Plata' : 'Bronce'})
                 </span>
-                <span className="font-mono text-xs px-2.5 py-0.5 rounded-full bg-surface-container-highest text-on-surface font-bold border border-outline-variant/30">
+                <span className="font-mono text-xs px-2.5 py-0.5 rounded-full bg-[#ebdcc8] text-[#5c3d2e] font-bold border border-[#d8c5ad]">
                   {currentTierMaxStamps} Sellos
                 </span>
               </div>
-              <span className="font-sans text-[11px] text-on-surface-variant">
+              <span className="font-sans text-[11px] text-[#786455]">
                 Longitud definida por el premio mayor ({currentTierMaxStamps} sellos)
               </span>
             </div>
 
             {/* Grid de sellos físico simulado */}
-            <div className="flex flex-wrap items-center gap-2.5 p-4 rounded-xl bg-surface-container-lowest border border-outline-variant/20 shadow-inner">
+            <div className="flex flex-wrap items-center gap-2.5 p-3 rounded-xl bg-[#faedd9]/60 border border-[#dfd2be] shadow-inner">
               {Array.from({ length: currentTierMaxStamps }).map((_, i) => {
                 const slot = i + 1;
                 const rewardInSlot = config.rewards.find(r => (r.minTier || 'BRONZE') === selectedTierFilter && r.costStamps === slot);
@@ -596,13 +597,13 @@ export function ProgramConfig() {
                     key={slot}
                     className={`w-10 h-10 rounded-full flex flex-col items-center justify-center font-mono text-xs font-bold transition-all ${
                       rewardInSlot
-                        ? 'bg-amber-500/20 text-amber-900 border-2 border-amber-400 shadow-sm'
-                        : 'bg-surface-container text-on-surface-variant/70 border border-outline-variant/30'
+                        ? 'bg-[#b45309] text-white border-2 border-amber-300 shadow-xs'
+                        : 'bg-[#ede3cf] text-[#786455] border border-dashed border-[#d8c8b4]'
                     }`}
                     title={rewardInSlot ? `Premio: ${rewardInSlot.name} (${slot} sellos)` : `Sello ${slot}`}
                   >
                     {rewardInSlot ? (
-                      <Gift className="w-4.5 h-4.5 text-amber-700" />
+                      <Gift className="w-4.5 h-4.5 text-amber-200" />
                     ) : (
                       <span>{slot}</span>
                     )}
@@ -611,8 +612,8 @@ export function ProgramConfig() {
               })}
             </div>
 
-            <div className="text-[11px] font-sans text-on-surface-variant flex items-center gap-1.5 px-1">
-              <Lightbulb className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+            <div className="text-[11px] font-sans text-[#786455] flex items-center gap-1.5 px-1">
+              <Lightbulb className="w-3.5 h-3.5 text-secondary shrink-0" />
               <span>
                 {selectedTierFilter === 'BRONZE' && 'Al acumular los sellos de Bronce, en la visita #11 el cliente asciende a Tarjeta Plata con 1 sello. Los premios no canjeados se conservan como guardados.'}
                 {selectedTierFilter === 'SILVER' && 'Al acumular los sellos de Plata, en la siguiente visita asciende a Tarjeta Oro con 1 sello. Los premios previos siguen disponibles.'}
@@ -625,14 +626,14 @@ export function ProgramConfig() {
         {/* Lista de Recompensas */}
         <div className="flex flex-col gap-2.5">
           {filteredRewards.length === 0 ? (
-            <div className="p-8 text-center rounded-xl bg-surface-container-low text-on-surface-variant font-sans text-xs">
+            <div className="p-8 text-center rounded-xl bg-surface-container-low text-on-surface-variant font-sans text-xs border border-outline-variant/40">
               No hay recompensas registradas en este nivel.
             </div>
           ) : (
             filteredRewards.map((reward) => {
               const tier = reward.minTier || 'BRONZE';
               return (
-                <div key={reward.id} className="p-space-md rounded-xl bg-surface-container-low hover:bg-surface-container transition-colors flex flex-col sm:flex-row sm:items-center justify-between gap-space-sm group">
+                <div key={reward.id} className="p-space-md rounded-xl bg-surface-container-low hover:bg-surface-container transition-colors flex flex-col sm:flex-row sm:items-center justify-between gap-space-sm group border border-outline-variant/40">
                   <div className="flex items-center gap-space-md min-w-0 flex-1">
                     <span className="font-mono text-sm font-bold text-primary min-w-[90px] tracking-tight">
                       {isPuntos ? `${reward.costPoints.toLocaleString()} pts` : `${reward.costStamps} sellos`}
@@ -640,7 +641,7 @@ export function ProgramConfig() {
                     <ArrowRight className="w-4.5 h-4.5 text-outline-variant shrink-0" />
                     <div className="flex items-center gap-2 truncate">
                       <span className="w-2 h-2 rounded-full bg-secondary shrink-0"></span>
-                      <span className="font-sans text-sm font-medium text-on-surface truncate">
+                      <span className="font-sans text-sm font-semibold text-on-surface truncate">
                         {reward.name}
                       </span>
                     </div>
@@ -648,10 +649,10 @@ export function ProgramConfig() {
 
                   <div className="flex items-center gap-2.5 self-end sm:self-auto">
                     {/* Badge de Tier */}
-                    <span className={`px-2 py-0.5 rounded-full font-mono text-[11px] font-semibold flex items-center gap-1 shadow-xs ${
-                      tier === 'GOLD' ? 'bg-amber-100 text-amber-800 border border-amber-300' :
-                      tier === 'SILVER' ? 'bg-slate-200 text-slate-800 border border-slate-300' :
-                      'bg-amber-50 text-amber-900 border border-amber-200'
+                    <span className={`px-2.5 py-0.5 rounded-full font-mono text-[11px] font-bold flex items-center gap-1 shadow-xs border ${
+                      tier === 'GOLD' ? 'bg-[#fef3c7] text-[#92400e] border-[#f59e0b]/50' :
+                      tier === 'SILVER' ? 'bg-[#f1f3f5] text-[#334155] border-[#94a3b8]/60' :
+                      'bg-[#f5e6d3] text-[#78350f] border-[#d97706]/40'
                     }`}>
                       {tier === 'GOLD' ? '🥇 Oro VIP' : tier === 'SILVER' ? '🥈 Plata' : '🥉 Bronze (Todos)'}
                     </span>
@@ -667,7 +668,7 @@ export function ProgramConfig() {
                           });
                           setIsRewardModalOpen(true);
                         }}
-                        className="p-1.5 text-outline hover:text-primary hover:bg-primary-container/50 rounded-lg transition-colors"
+                        className="p-1.5 text-outline hover:text-primary hover:bg-surface-container-highest rounded-lg transition-colors cursor-pointer"
                         title="Editar recompensa"
                       >
                         <Pencil className="w-4 h-4" />
@@ -677,7 +678,7 @@ export function ProgramConfig() {
                           deleteReward(reward.id);
                           toast.success('Recompensa eliminada');
                         }}
-                        className="p-1.5 text-outline hover:text-error hover:bg-error-container/50 rounded-lg transition-colors"
+                        className="p-1.5 text-outline hover:text-error hover:bg-error-container/50 rounded-lg transition-colors cursor-pointer"
                         title="Eliminar recompensa"
                       >
                         <Trash2 className="w-4 h-4" />
@@ -701,7 +702,7 @@ export function ProgramConfig() {
             });
             setIsRewardModalOpen(true);
           }}
-          className="w-full py-3.5 px-4 rounded-xl bg-primary-fixed/40 hover:bg-primary-fixed text-primary font-sans text-sm font-semibold transition-all flex items-center justify-center gap-2 group"
+          className="w-full py-3.5 px-4 rounded-xl bg-surface-container-low hover:bg-surface-container text-primary font-sans text-sm font-semibold transition-all flex items-center justify-center gap-2 group border border-outline-variant/50 cursor-pointer"
         >
           <PlusCircle className="w-5 h-5 transition-transform group-hover:scale-110" />
           <span>Agregar nueva recompensa</span>
@@ -713,7 +714,7 @@ export function ProgramConfig() {
         <button 
           type="button" 
           onClick={handleSaveNotification}
-          className="w-full py-4 px-8 rounded-xl bg-primary hover:bg-tertiary-container text-on-primary font-display text-lg font-semibold shadow-md transition-all active:scale-[0.99] flex items-center justify-center gap-3"
+          className="w-full py-4 px-8 rounded-xl bg-[#064e3b] hover:bg-[#065f46] text-white font-display text-lg font-bold shadow-md transition-all active:scale-[0.99] flex items-center justify-center gap-3 cursor-pointer ring-1 ring-emerald-500/20"
         >
           <Save className="w-6 h-6" />
           <span>Guardar Configuración</span>
@@ -730,14 +731,14 @@ export function ProgramConfig() {
       {isRewardModalOpen && (
         <div 
           onClick={() => setIsRewardModalOpen(false)}
-          className="fixed inset-0 z-50 flex items-center justify-center bg-on-surface/40 backdrop-blur-sm p-4 animate-in fade-in duration-200"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in duration-200"
         >
           <div 
             onClick={(e) => e.stopPropagation()}
-            className="bg-surface-container-lowest rounded-2xl shadow-xl w-full max-w-sm overflow-hidden flex flex-col animate-in zoom-in-95 duration-200"
+            className="bg-surface-container-lowest rounded-2xl shadow-xl w-full max-w-sm overflow-hidden flex flex-col animate-in zoom-in-95 duration-200 border border-outline-variant/60"
           >
             <div className="p-6 flex flex-col gap-4">
-              <div className="w-10 h-10 rounded-full bg-primary-container text-on-primary-container flex items-center justify-center mb-1">
+              <div className="w-10 h-10 rounded-full bg-amber-50 text-secondary flex items-center justify-center mb-1 border border-amber-200">
                 <Ticket className="w-5 h-5" />
               </div>
               <h3 className="font-display text-xl font-bold text-on-surface">
@@ -751,7 +752,7 @@ export function ProgramConfig() {
                     type="text"
                     value={rewardForm.name}
                     onChange={(e) => setRewardForm({ ...rewardForm, name: e.target.value })}
-                    className="w-full bg-surface-container-lowest border border-outline-variant/40 rounded-lg py-3 px-3.5 font-sans text-sm text-on-surface outline-none focus:border-primary transition-colors"
+                    className="w-full bg-surface-container-low/70 border border-outline-variant/50 rounded-lg py-3 px-3.5 font-sans text-sm text-on-surface outline-none focus:border-primary focus:bg-surface-container-lowest transition-colors"
                     placeholder="Ej. Café gratis"
                   />
                 </div>
@@ -765,8 +766,8 @@ export function ProgramConfig() {
                       type="number"
                       value={rewardForm.cost}
                       onChange={(e) => setRewardForm({ ...rewardForm, cost: e.target.value })}
-                      className="w-full bg-surface-container-lowest border border-outline-variant/40 rounded-lg py-3 pl-3.5 pr-12 font-mono text-sm text-on-surface outline-none focus:border-primary transition-colors"
-                      placeholder="Ej. 5000"
+                      className="w-full bg-surface-container-low/70 border border-outline-variant/50 rounded-lg py-3 pl-3.5 pr-14 font-mono text-sm text-on-surface outline-none focus:border-primary focus:bg-surface-container-lowest transition-colors"
+                      placeholder="Ej. 5"
                     />
                     <span className="absolute right-3.5 top-1/2 -translate-y-1/2 font-mono text-[11px] text-on-surface-variant font-medium">
                       {isPuntos ? 'pts' : 'sellos'}
@@ -783,9 +784,9 @@ export function ProgramConfig() {
                     <button
                       type="button"
                       onClick={() => setRewardForm({ ...rewardForm, minTier: 'BRONZE' })}
-                      className={`p-2 rounded-lg text-center font-sans text-xs font-semibold transition-all border ${
+                      className={`p-2 rounded-lg text-center font-sans text-xs font-semibold transition-all border cursor-pointer ${
                         rewardForm.minTier === 'BRONZE'
-                          ? 'bg-amber-100 text-amber-900 border-amber-400 shadow-sm'
+                          ? 'bg-[#f5e6d3] text-[#78350f] border-[#d97706]/70 shadow-xs'
                           : 'bg-surface-container-low text-on-surface-variant border-transparent hover:bg-surface-container'
                       }`}
                     >
@@ -796,9 +797,9 @@ export function ProgramConfig() {
                     <button
                       type="button"
                       onClick={() => setRewardForm({ ...rewardForm, minTier: 'SILVER' })}
-                      className={`p-2 rounded-lg text-center font-sans text-xs font-semibold transition-all border ${
+                      className={`p-2 rounded-lg text-center font-sans text-xs font-semibold transition-all border cursor-pointer ${
                         rewardForm.minTier === 'SILVER'
-                          ? 'bg-slate-200 text-slate-800 border-slate-400 shadow-sm'
+                          ? 'bg-[#f1f3f5] text-[#334155] border-[#94a3b8]/70 shadow-xs'
                           : 'bg-surface-container-low text-on-surface-variant border-transparent hover:bg-surface-container'
                       }`}
                     >
@@ -809,9 +810,9 @@ export function ProgramConfig() {
                     <button
                       type="button"
                       onClick={() => setRewardForm({ ...rewardForm, minTier: 'GOLD' })}
-                      className={`p-2 rounded-lg text-center font-sans text-xs font-semibold transition-all border ${
+                      className={`p-2 rounded-lg text-center font-sans text-xs font-semibold transition-all border cursor-pointer ${
                         rewardForm.minTier === 'GOLD'
-                          ? 'bg-amber-200 text-amber-900 border-amber-500 shadow-sm'
+                          ? 'bg-[#fef3c7] text-[#92400e] border-[#f59e0b]/70 shadow-xs'
                           : 'bg-surface-container-low text-on-surface-variant border-transparent hover:bg-surface-container'
                       }`}
                     >
@@ -829,11 +830,11 @@ export function ProgramConfig() {
                 </div>
               </div>
             </div>
-            <div className="bg-surface-container-low p-4 flex gap-3 justify-end border-t border-outline-variant/20">
+            <div className="bg-surface-container-low p-4 flex gap-3 justify-end border-t border-outline-variant/40">
               <button 
                 type="button"
                 onClick={() => setIsRewardModalOpen(false)}
-                className="px-5 py-2.5 rounded-xl font-sans text-sm font-semibold text-on-surface-variant hover:bg-surface-container transition-colors"
+                className="px-5 py-2.5 rounded-xl font-sans text-sm font-semibold text-on-surface-variant hover:bg-surface-container transition-colors cursor-pointer"
               >
                 Cancelar
               </button>
@@ -861,7 +862,7 @@ export function ProgramConfig() {
                   }
                   setIsRewardModalOpen(false);
                 }}
-                className="px-5 py-2.5 rounded-xl font-sans text-sm font-semibold bg-primary text-on-primary hover:bg-primary-container hover:text-on-primary-container transition-colors shadow-sm"
+                className="px-5 py-2.5 rounded-xl font-sans text-sm font-semibold bg-primary text-on-primary hover:bg-primary-container transition-colors shadow-xs cursor-pointer"
               >
                 Guardar
               </button>

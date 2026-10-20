@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Monitor, Lock, Mail, Loader2, ArrowRight, AlertCircle, ShieldCheck, Eye, EyeOff } from 'lucide-react';
+import { Coffee, Lock, Mail, Loader2, ArrowRight, AlertCircle, ShieldCheck, Eye, EyeOff } from 'lucide-react';
 import { useAuthStore } from '../store/useAuthStore';
 
 export function Login() {
@@ -36,18 +36,18 @@ export function Login() {
 
   return (
     <div className="min-h-screen bg-surface flex items-center justify-center p-4">
-      <div className="w-full max-w-md bg-surface-container-lowest rounded-2xl shadow-[0_4px_24px_rgba(0,0,0,0.08)] border border-outline-variant/30 overflow-hidden">
-        {/* Header con gradiente suave y branding */}
-        <div className="p-8 bg-gradient-to-b from-primary-container/10 to-transparent border-b border-outline-variant/20 flex flex-col items-center text-center">
-          <div className="w-14 h-14 rounded-2xl bg-primary-container flex items-center justify-center text-on-primary shadow-md mb-4">
-            <Monitor className="w-7 h-7" />
+      <div className="w-full max-w-md bg-surface-container-lowest rounded-2xl shadow-[0_4px_24px_rgba(44,30,20,0.06)] border border-outline-variant/60 overflow-hidden">
+        {/* Header con estilo warm craft y branding */}
+        <div className="p-8 bg-gradient-to-b from-amber-500/10 to-transparent border-b border-outline-variant/50 flex flex-col items-center text-center">
+          <div className="w-14 h-14 rounded-2xl bg-primary flex items-center justify-center text-on-primary shadow-sm mb-4">
+            <Coffee className="w-7 h-7 text-on-primary" />
           </div>
-          <h1 className="font-display font-bold text-2xl text-on-surface">LoyaltyPOS</h1>
+          <h1 className="font-display font-bold text-2xl text-on-surface">Loyalty<span className="text-secondary">POS</span></h1>
           <p className="font-sans text-sm text-on-surface-variant mt-1">
-            Terminal de Puntos & Fidelización para Comercios
+            Terminal de Fidelización & Specialty Craft
           </p>
-          <div className="inline-flex items-center gap-1.5 mt-3 px-3 py-1 rounded-full bg-secondary-container/30 text-on-secondary-container font-mono text-xs font-semibold">
-            <ShieldCheck className="w-3.5 h-3.5" />
+          <div className="inline-flex items-center gap-1.5 mt-3 px-3 py-1 rounded-full bg-amber-50 text-amber-900 border border-amber-300 font-mono text-xs font-semibold">
+            <ShieldCheck className="w-3.5 h-3.5 text-secondary" />
             Ecosistema Conectado
           </div>
         </div>
