@@ -102,8 +102,32 @@ export interface ProcessPurchaseResult {
   previousTier: TierType;
   newTier: TierType;
   upgradedTier: boolean;
+  cardCompletedNow?: boolean;
   isDoubleStamp?: boolean;
   isDoublePoints?: boolean;
+}
+
+/**
+ * Obtiene la cantidad total de sellos de una tarjeta según el premio de mayor costo configurado en ese tier.
+ */
+export function getTierMaxStamps(tier: TierType, rewards: Reward[], defaultFallback = 10): number {
+  const tierRewards = rewards.filter((r) => (r.minTier || 'BRONZE') === tier && r.costStamps > 0);
+  if (tierRewards.length === 0) {
+    return defaultFallback;
+  }
+  return Math.max(...tierRewards.map((r) => r.costStamps));
+}
+
+export function getNextTier(tier: TierType): TierType {
+  if (tier === 'BRONZE') return 'SILVER';
+  if (tier === 'SILVER') return 'GOLD';
+  return 'GOLD';
+}
+
+export function getPreviousTier(tier: TierType): TierType {
+  if (tier === 'GOLD') return 'SILVER';
+  if (tier === 'SILVER') return 'BRONZE';
+  return 'BRONZE';
 }
 
 /**
@@ -702,19 +726,61 @@ export const useLoyaltyStore = create<LoyaltyState>((set, get) => ({
     const updatedSpent = existingCustomer.totalSpent + ticketAmount;
     const updatedVisitDate = txDate;
 
-    const { effectiveTier } = calculateCustomerTier(
-      {
-        totalVisits: updatedVisits,
-        completedCards: existingCustomer.completedCards,
-        lastVisitDate: updatedVisitDate,
-        manualTierOverride: existingCustomer.manualTierOverride,
-        tier: existingCustomer.tier,
-      },
-      state.config.tierConfig,
-      state.config.type
-    );
+    let effectiveTier = currentTier;
+    let newStamps = existingCustomer.stamps;
+    let newCompletedCards = existingCustomer.completedCards || 0;
+    let upgradedTier = false;
+    let cardCompletedNow = false;
 
-    const upgradedTier = TIER_RANKS[effectiveTier] > TIER_RANKS[currentTier];
+    if (state.config.type === 'sellos') {
+      const currentCardMax = getTierMaxStamps(currentTier, state.config.rewards, state.config.stampsToReward);
+
+      // Si el cliente YA tenía la tarjeta llena (ej: 10/10), esta visita (marca #11) es la que sube de nivel
+      if (existingCustomer.stamps >= currentCardMax) {
+        const next = getNextTier(currentTier);
+        effectiveTier = next;
+        newCompletedCards = (existingCustomer.completedCards || 0) + 1;
+        newStamps = stampsEarned; // arranca la nueva tarjeta con los sellos sumados hoy (1 o 2)
+        upgradedTier = next !== currentTier;
+        cardCompletedNow = false;
+      } else if (existingCustomer.stamps + stampsEarned > currentCardMax) {
+        // Desborde por doble sello: ej. tenía 9/10 y sumó 2 sellos -> sello 10 completa Bronce, sello 11 inicia Plata con 1
+        const next = getNextTier(currentTier);
+        effectiveTier = next;
+        newCompletedCards = (existingCustomer.completedCards || 0) + 1;
+        newStamps = (existingCustomer.stamps + stampsEarned) - currentCardMax;
+        upgradedTier = next !== currentTier;
+        cardCompletedNow = false;
+      } else if (existingCustomer.stamps + stampsEarned === currentCardMax) {
+        // Llega exactamente al tope: se mantiene en la tarjeta actual (10/10)
+        effectiveTier = currentTier;
+        newStamps = currentCardMax;
+        upgradedTier = false;
+        cardCompletedNow = true;
+      } else {
+        // Aún no llega al tope
+        effectiveTier = currentTier;
+        newStamps = existingCustomer.stamps + stampsEarned;
+        upgradedTier = false;
+        cardCompletedNow = false;
+      }
+    } else {
+      // Modo Puntos: cálculo por visitas y tierConfig
+      const tierEval = calculateCustomerTier(
+        {
+          totalVisits: updatedVisits,
+          completedCards: existingCustomer.completedCards,
+          lastVisitDate: updatedVisitDate,
+          manualTierOverride: existingCustomer.manualTierOverride,
+          tier: existingCustomer.tier,
+        },
+        state.config.tierConfig,
+        state.config.type
+      );
+      effectiveTier = tierEval.effectiveTier;
+      newStamps = existingCustomer.stamps;
+      upgradedTier = TIER_RANKS[effectiveTier] > TIER_RANKS[currentTier];
+    }
 
     result = {
       pointsEarned,
@@ -722,6 +788,7 @@ export const useLoyaltyStore = create<LoyaltyState>((set, get) => ({
       previousTier: currentTier,
       newTier: effectiveTier,
       upgradedTier,
+      cardCompletedNow,
       isDoubleStamp,
       isDoublePoints,
     };
@@ -740,7 +807,8 @@ export const useLoyaltyStore = create<LoyaltyState>((set, get) => ({
     const updatedCustomer: Customer = {
       ...existingCustomer,
       points: existingCustomer.points + pointsEarned,
-      stamps: existingCustomer.stamps + stampsEarned,
+      stamps: newStamps,
+      completedCards: newCompletedCards,
       totalVisits: updatedVisits,
       totalSpent: updatedSpent,
       lastVisitDate: updatedVisitDate,
@@ -762,10 +830,12 @@ export const useLoyaltyStore = create<LoyaltyState>((set, get) => ({
               dni: existingCustomer.dni,
               points: updatedCustomer.points,
               stamps: updatedCustomer.stamps,
+              completed_cards: updatedCustomer.completedCards,
               total_visits: updatedVisits,
               total_spent: updatedSpent,
               last_visit_date: updatedVisitDate,
               tier: effectiveTier,
+              updated_at: txDate,
             })
             .eq('id', existingCustomer.id);
 
@@ -865,29 +935,14 @@ export const useLoyaltyStore = create<LoyaltyState>((set, get) => ({
     const customer = state.customers[customerIndex];
     if (customer.stamps < stampsToDeduct) return;
 
-    const maxStampsReward =
-      state.config.rewards.length > 0
-        ? Math.max(...state.config.rewards.map((r) => r.costStamps))
-        : state.config.stampsToReward;
+    if (rewardId && (customer.claimedRewards || []).includes(rewardId)) {
+      toast.error('Esta recompensa ya fue canjeada en la tarjeta actual.');
+      return;
+    }
 
-    const isMaxReward = stampsToDeduct >= maxStampsReward;
-    const actualStampsToDeduct = isMaxReward ? maxStampsReward : 0;
-    const newStamps = customer.stamps - actualStampsToDeduct;
-    const newCompletedCards = isMaxReward
-      ? (customer.completedCards || 0) + 1
-      : (customer.completedCards || 0);
-
-    const { effectiveTier } = calculateCustomerTier(
-      {
-        totalVisits: customer.totalVisits,
-        completedCards: newCompletedCards,
-        lastVisitDate: customer.lastVisitDate,
-        manualTierOverride: customer.manualTierOverride,
-        tier: customer.tier,
-      },
-      state.config.tierConfig,
-      state.config.type
-    );
+    const newClaimedRewards = rewardId
+      ? Array.from(new Set([...(customer.claimedRewards || []), rewardId]))
+      : customer.claimedRewards || [];
 
     const txHash = '#' + Math.random().toString(36).substring(2, 7);
     const txDate = new Date().toISOString();
@@ -902,24 +957,15 @@ export const useLoyaltyStore = create<LoyaltyState>((set, get) => ({
       type: 'CANJE',
       amount: 0,
       pointsChange: 0,
-      stampsChange: -actualStampsToDeduct,
+      stampsChange: 0, // En sellos no se descuentan los sellos
       hash: txHash,
     };
-
-    const newClaimedRewards = isMaxReward
-      ? []
-      : rewardId
-      ? [...(customer.claimedRewards || []), rewardId]
-      : customer.claimedRewards || [];
 
     set({
       customers: state.customers.map((c) =>
         c.dni === dni
           ? {
               ...customer,
-              stamps: newStamps,
-              completedCards: newCompletedCards,
-              tier: effectiveTier,
               claimedRewards: newClaimedRewards,
             }
           : c
@@ -933,10 +979,8 @@ export const useLoyaltyStore = create<LoyaltyState>((set, get) => ({
           .from('loyalty_customers')
           .update({
             dni: customer.dni,
-            stamps: newStamps,
-            completed_cards: newCompletedCards,
-            tier: effectiveTier,
             claimed_rewards: newClaimedRewards,
+            updated_at: txDate,
           })
           .eq('id', customer.id);
 
@@ -949,7 +993,7 @@ export const useLoyaltyStore = create<LoyaltyState>((set, get) => ({
           type: 'CANJE',
           amount: 0,
           points_change: 0,
-          stamps_change: -actualStampsToDeduct,
+          stamps_change: 0,
           hash: txHash,
         });
       } catch (err) {
@@ -1140,6 +1184,16 @@ export const useLoyaltyStore = create<LoyaltyState>((set, get) => ({
         };
       }
 
+      // En sellos, verificar que no se haya canjeado ya este premio en la tarjeta actual
+      if (state.config.type === 'sellos' && tokenRecord.reward_id) {
+        if ((customer.claimedRewards || []).includes(tokenRecord.reward_id)) {
+          return {
+            success: false,
+            message: 'Esta recompensa ya fue canjeada en la tarjeta actual.',
+          };
+        }
+      }
+
       // 5. Descontar saldo, calcular tarjetas completadas y tier según el tipo de programa
       const txHash = '#' + Math.random().toString(36).substring(2, 7);
       const txDate = new Date().toISOString();
@@ -1148,38 +1202,32 @@ export const useLoyaltyStore = create<LoyaltyState>((set, get) => ({
       let newStamps = customer.stamps;
       let newCompletedCards = customer.completedCards || 0;
       let newClaimedRewards = customer.claimedRewards || [];
+      let effectiveTier = customer.tier;
 
-      if (state.config.type === 'sellos' && stampsCost > 0) {
-        const maxStampsReward =
-          state.config.rewards.length > 0
-            ? Math.max(...state.config.rewards.map((r) => r.costStamps))
-            : state.config.stampsToReward;
-
-        const isMaxReward = stampsCost >= maxStampsReward;
-        if (isMaxReward) {
-          newStamps = Math.max(0, customer.stamps - maxStampsReward);
-          newCompletedCards = (customer.completedCards || 0) + 1;
-          newClaimedRewards = [];
-        } else {
-          newClaimedRewards = tokenRecord.reward_id
-            ? [...newClaimedRewards, tokenRecord.reward_id]
-            : newClaimedRewards;
-        }
+      if (state.config.type === 'sellos') {
+        // En sellos NO se descuentan sellos: es una marca física. Sólo se registra el premio como reclamado.
+        newStamps = customer.stamps;
+        newClaimedRewards = tokenRecord.reward_id
+          ? Array.from(new Set([...(customer.claimedRewards || []), tokenRecord.reward_id]))
+          : newClaimedRewards;
+        effectiveTier = customer.tier;
       } else {
         newStamps = Math.max(0, customer.stamps - stampsCost);
+        const tierEval = calculateCustomerTier(
+          {
+            totalVisits: customer.totalVisits,
+            completedCards: newCompletedCards,
+            lastVisitDate: customer.lastVisitDate,
+            manualTierOverride: customer.manualTierOverride,
+            tier: customer.tier,
+          },
+          state.config.tierConfig,
+          state.config.type
+        );
+        effectiveTier = tierEval.effectiveTier;
       }
 
-      const { effectiveTier } = calculateCustomerTier(
-        {
-          totalVisits: customer.totalVisits,
-          completedCards: newCompletedCards,
-          lastVisitDate: customer.lastVisitDate,
-          manualTierOverride: customer.manualTierOverride,
-          tier: customer.tier,
-        },
-        state.config.tierConfig,
-        state.config.type
-      );
+      const stampsDelta = state.config.type === 'sellos' ? 0 : -(customer.stamps - newStamps);
 
       const newTransaction: Transaction = {
         id: crypto.randomUUID(),
@@ -1191,7 +1239,7 @@ export const useLoyaltyStore = create<LoyaltyState>((set, get) => ({
         type: 'CANJE',
         amount: 0,
         pointsChange: -pointsCost,
-        stampsChange: -(customer.stamps - newStamps),
+        stampsChange: stampsDelta,
         hash: txHash,
       };
 
@@ -1218,7 +1266,7 @@ export const useLoyaltyStore = create<LoyaltyState>((set, get) => ({
         type: 'CANJE',
         amount: 0,
         points_change: -pointsCost,
-        stamps_change: -(customer.stamps - newStamps),
+        stamps_change: stampsDelta,
         hash: txHash,
       });
 

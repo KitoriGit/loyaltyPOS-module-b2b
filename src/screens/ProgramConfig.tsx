@@ -17,9 +17,10 @@ import {
   RefreshCw,
   Crown,
   Zap,
-  CalendarClock
+  CalendarClock,
+  Gift
 } from 'lucide-react';
-import { useLoyaltyStore, type Reward, type TierType } from '../store/useLoyaltyStore';
+import { useLoyaltyStore, type Reward, type TierType, getTierMaxStamps } from '../store/useLoyaltyStore';
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import toast from 'react-hot-toast';
 
@@ -71,6 +72,11 @@ export function ProgramConfig() {
     if (selectedTierFilter === 'ALL') return config.rewards;
     return config.rewards.filter(r => (r.minTier || 'BRONZE') === selectedTierFilter);
   }, [config.rewards, selectedTierFilter]);
+
+  const currentTierMaxStamps = useMemo(() => {
+    const tier = selectedTierFilter === 'ALL' ? 'BRONZE' : selectedTierFilter;
+    return getTierMaxStamps(tier, config.rewards, config.stampsToReward);
+  }, [selectedTierFilter, config.rewards, config.stampsToReward]);
 
   return (
     <div className="w-full max-w-3xl mx-auto flex flex-col gap-space-lg pb-space-xl">
@@ -502,17 +508,19 @@ export function ProgramConfig() {
 
         {/* Filtros de Pestaña por Tier */}
         <div className="flex items-center gap-1.5 p-1 rounded-xl bg-surface-container-low overflow-x-auto">
-          <button
-            type="button"
-            onClick={() => setSelectedTierFilter('ALL')}
-            className={`px-3 py-1.5 rounded-lg font-sans text-xs font-semibold transition-all shrink-0 ${
-              selectedTierFilter === 'ALL'
-                ? 'bg-surface-container-lowest text-primary shadow-sm'
-                : 'text-on-surface-variant hover:text-on-surface'
-            }`}
-          >
-            Todas ({config.rewards.length})
-          </button>
+          {isPuntos && (
+            <button
+              type="button"
+              onClick={() => setSelectedTierFilter('ALL')}
+              className={`px-3 py-1.5 rounded-lg font-sans text-xs font-semibold transition-all shrink-0 ${
+                selectedTierFilter === 'ALL'
+                  ? 'bg-surface-container-lowest text-primary shadow-sm'
+                  : 'text-on-surface-variant hover:text-on-surface'
+              }`}
+            >
+              Todas ({config.rewards.length})
+            </button>
+          )}
           <button
             type="button"
             onClick={() => setSelectedTierFilter('BRONZE')}
@@ -522,7 +530,7 @@ export function ProgramConfig() {
                 : 'text-on-surface-variant hover:text-on-surface'
             }`}
           >
-            <span>🥉</span> Bronze ({config.rewards.filter(r => (r.minTier || 'BRONZE') === 'BRONZE').length})
+            <span>🥉</span> {isSellos ? 'Tarjeta Bronce' : 'Bronze'} ({config.rewards.filter(r => (r.minTier || 'BRONZE') === 'BRONZE').length})
           </button>
           <button
             type="button"
@@ -533,7 +541,7 @@ export function ProgramConfig() {
                 : 'text-on-surface-variant hover:text-on-surface'
             }`}
           >
-            <span>🥈</span> Plata ({config.rewards.filter(r => r.minTier === 'SILVER').length})
+            <span>🥈</span> {isSellos ? 'Tarjeta Plata' : 'Plata'} ({config.rewards.filter(r => r.minTier === 'SILVER').length})
           </button>
           <button
             type="button"
@@ -544,9 +552,75 @@ export function ProgramConfig() {
                 : 'text-on-surface-variant hover:text-on-surface'
             }`}
           >
-            <span>🥇</span> Oro VIP ({config.rewards.filter(r => r.minTier === 'GOLD').length})
+            <span>🥇</span> {isSellos ? 'Tarjeta Oro VIP' : 'Oro VIP'} ({config.rewards.filter(r => r.minTier === 'GOLD').length})
           </button>
+          {isSellos && (
+            <button
+              type="button"
+              onClick={() => setSelectedTierFilter('ALL')}
+              className={`px-3 py-1.5 rounded-lg font-sans text-xs font-semibold transition-all shrink-0 ${
+                selectedTierFilter === 'ALL'
+                  ? 'bg-surface-container-lowest text-primary shadow-sm'
+                  : 'text-on-surface-variant hover:text-on-surface'
+              }`}
+            >
+              Todas las tarjetas ({config.rewards.length})
+            </button>
+          )}
         </div>
+
+        {/* Simulador Físico de Tarjeta para Programa de Sellos */}
+        {isSellos && selectedTierFilter !== 'ALL' && (
+          <div className="p-4 rounded-xl bg-surface-container-low border border-outline-variant/30 flex flex-col gap-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <span className="font-display text-sm font-bold text-on-surface">
+                  Simulación de Tarjeta Físico-Digital ({selectedTierFilter === 'GOLD' ? 'Oro VIP' : selectedTierFilter === 'SILVER' ? 'Plata' : 'Bronce'})
+                </span>
+                <span className="font-mono text-xs px-2.5 py-0.5 rounded-full bg-surface-container-highest text-on-surface font-bold border border-outline-variant/30">
+                  {currentTierMaxStamps} Sellos
+                </span>
+              </div>
+              <span className="font-sans text-[11px] text-on-surface-variant">
+                Longitud definida por el premio mayor ({currentTierMaxStamps} sellos)
+              </span>
+            </div>
+
+            {/* Grid de sellos físico simulado */}
+            <div className="flex flex-wrap items-center gap-2.5 p-4 rounded-xl bg-surface-container-lowest border border-outline-variant/20 shadow-inner">
+              {Array.from({ length: currentTierMaxStamps }).map((_, i) => {
+                const slot = i + 1;
+                const rewardInSlot = config.rewards.find(r => (r.minTier || 'BRONZE') === selectedTierFilter && r.costStamps === slot);
+                return (
+                  <div
+                    key={slot}
+                    className={`w-10 h-10 rounded-full flex flex-col items-center justify-center font-mono text-xs font-bold transition-all ${
+                      rewardInSlot
+                        ? 'bg-amber-500/20 text-amber-900 border-2 border-amber-400 shadow-sm'
+                        : 'bg-surface-container text-on-surface-variant/70 border border-outline-variant/30'
+                    }`}
+                    title={rewardInSlot ? `Premio: ${rewardInSlot.name} (${slot} sellos)` : `Sello ${slot}`}
+                  >
+                    {rewardInSlot ? (
+                      <Gift className="w-4.5 h-4.5 text-amber-700" />
+                    ) : (
+                      <span>{slot}</span>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="text-[11px] font-sans text-on-surface-variant flex items-center gap-1.5 px-1">
+              <Lightbulb className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+              <span>
+                {selectedTierFilter === 'BRONZE' && 'Al acumular los sellos de Bronce, en la visita #11 el cliente asciende a Tarjeta Plata con 1 sello. Los premios no canjeados se conservan como guardados.'}
+                {selectedTierFilter === 'SILVER' && 'Al acumular los sellos de Plata, en la siguiente visita asciende a Tarjeta Oro con 1 sello. Los premios previos siguen disponibles.'}
+                {selectedTierFilter === 'GOLD' && 'Al completar la Tarjeta Oro, en la siguiente visita se reinicia el ciclo Oro con 1 sello.'}
+              </span>
+            </div>
+          </div>
+        )}
 
         {/* Lista de Recompensas */}
         <div className="flex flex-col gap-2.5">

@@ -1,19 +1,20 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import toast from 'react-hot-toast';
 import { 
-  Touchpad, Store, CheckCircle2, IdCard, Search, X, Star, Clock, Check, 
+  Touchpad, Store, CheckCircle2, IdCard, Search, X, Star, Check, 
   Gift, CupSoda, ArrowUpCircle, Banknote, Coins, UserPlus, Sparkles, QrCode,
   Crown, Zap, Lock, AlertTriangle, ShieldCheck
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
-import { useAuthStore } from '../store/useAuthStore';
 import { 
   useLoyaltyStore, 
   type Reward, 
   canClaimReward, 
   TIER_LABELS, 
   TIER_RANKS,
-  calculateCustomerTier 
+  calculateCustomerTier,
+  getTierMaxStamps,
+  getNextTier
 } from '../store/useLoyaltyStore';
 
 export function TerminalPOS() {
@@ -23,7 +24,6 @@ export function TerminalPOS() {
   const redeemPoints = useLoyaltyStore((state) => state.redeemPoints);
   const redeemStamps = useLoyaltyStore((state) => state.redeemStamps);
   const validateRedemptionToken = useLoyaltyStore((state) => state.validateRedemptionToken);
-  const workspaceId = useAuthStore((state) => state.workspaceId);
 
   const isPuntos = config.type === 'puntos';
   const isSellos = config.type === 'sellos';
@@ -35,14 +35,14 @@ export function TerminalPOS() {
   const [isRedeemModalOpen, setIsRedeemModalOpen] = useState(false);
   const [selectedReward, setSelectedReward] = useState<Reward | null>(null);
 
-  // Estados para validación de tokens QR / OTP y canjes store-wide
+  // Estados para validación de tokens QR / OTP
   const [isTokenModalOpen, setIsTokenModalOpen] = useState(false);
   const [tokenInput, setTokenInput] = useState('');
   const [isValidatingToken, setIsValidatingToken] = useState(false);
-  const [storePendingTokens, setStorePendingTokens] = useState<any[]>([]);
   const [activeCustomerPendingToken, setActiveCustomerPendingToken] = useState<any | null>(null);
   
   const dniInputRef = useRef<HTMLInputElement>(null);
+  const ticketInputRef = useRef<HTMLInputElement>(null);
 
   const activeCustomer = useMemo(() => {
     return customers.find(c => c.dni === activeDni);
@@ -137,24 +137,31 @@ export function TerminalPOS() {
   
   // Lógica de progreso dinámica memorizada según el catálogo
   const { nextPuntosReward, nextSellosReward, targetPoints, targetStamps, maxStampsReward } = useMemo(() => {
-    const sortedPoints = [...config.rewards].sort((a, b) => a.costPoints - b.costPoints);
-    const sortedStamps = [...config.rewards].sort((a, b) => a.costStamps - b.costStamps);
+    const currentTier = activeCustomer?.tier || 'BRONZE';
+    const tierMax = isSellos
+      ? getTierMaxStamps(currentTier, config.rewards, config.stampsToReward)
+      : (config.rewards.length > 0 ? Math.max(...config.rewards.map(r => r.costStamps)) : config.stampsToReward);
 
+    const sortedPoints = [...config.rewards].sort((a, b) => a.costPoints - b.costPoints);
     const nextPts = sortedPoints.find(r => r.costPoints > (activeCustomer?.points || 0));
-    const nextStp = sortedStamps.find(r => r.costStamps > (activeCustomer?.stamps || 0));
+
+    // Próximo premio en sellos dentro del tier actual
+    const sortedStampsCurrentTier = config.rewards
+      .filter(r => (r.minTier || 'BRONZE') === currentTier && r.costStamps > 0)
+      .sort((a, b) => a.costStamps - b.costStamps);
+    const nextStp = sortedStampsCurrentTier.find(r => r.costStamps > (activeCustomer?.stamps || 0));
 
     const tPoints = nextPts ? nextPts.costPoints : (config.rewards.length > 0 ? Math.max(...config.rewards.map(r => r.costPoints)) : 5000);
-    const tStamps = nextStp ? nextStp.costStamps : (config.rewards.length > 0 ? Math.max(...config.rewards.map(r => r.costStamps)) : config.stampsToReward);
-    const mStamps = config.rewards.length > 0 ? Math.max(...config.rewards.map(r => r.costStamps)) : config.stampsToReward;
+    const tStamps = nextStp ? nextStp.costStamps : tierMax;
 
     return {
       nextPuntosReward: nextPts,
       nextSellosReward: nextStp,
       targetPoints: tPoints > 0 ? tPoints : 1,
       targetStamps: tStamps > 0 ? tStamps : 1,
-      maxStampsReward: mStamps > 0 ? mStamps : 1
+      maxStampsReward: tierMax > 0 ? tierMax : 1
     };
-  }, [config.rewards, config.stampsToReward, activeCustomer?.points, activeCustomer?.stamps]);
+  }, [config.rewards, config.stampsToReward, activeCustomer?.points, activeCustomer?.stamps, activeCustomer?.tier, isSellos]);
 
   const displayedStamps = activeCustomer?.stamps || 0;
   
@@ -173,14 +180,42 @@ export function TerminalPOS() {
     return `hace ${diffDays} día${diffDays > 1 ? 's' : ''}`;
   }, []);
   
-  // Recompensas disponibles para este cliente memorizadas (validando el tier jerárquico)
+  // Recompensas disponibles para este cliente memorizadas
   const availableRewards = useMemo(() => {
     if (!activeCustomer) return [];
+    if (isPuntos) {
+      return config.rewards
+        .filter(r => canClaimReward(activeCustomer.tier, r.minTier || 'BRONZE'))
+        .filter(r => (activeCustomer.points || 0) >= r.costPoints)
+        .sort((a, b) => a.costPoints - b.costPoints);
+    }
+
+    // Modo SELLOS:
+    // Un premio está disponible si NO está en claimedRewards y además:
+    // 1) Es de un tier anterior completado (premios guardados pendientes de canje)
+    // 2) O es del tier actual y el cliente alcanzó los sellos requeridos
+    const customerRank = TIER_RANKS[activeCustomer.tier || 'BRONZE'];
     return config.rewards
-      .filter(r => canClaimReward(activeCustomer.tier, r.minTier || 'BRONZE'))
-      .filter(r => isPuntos ? (activeCustomer.points || 0) >= r.costPoints : (activeCustomer.stamps || 0) >= r.costStamps)
-      .filter(r => !(activeCustomer.claimedRewards || []).includes(r.id))
-      .sort((a, b) => isPuntos ? a.costPoints - b.costPoints : a.costStamps - b.costStamps);
+      .filter(r => {
+        const rewardTier = r.minTier || 'BRONZE';
+        const rewardRank = TIER_RANKS[rewardTier];
+        const isClaimed = (activeCustomer.claimedRewards || []).includes(r.id);
+        if (isClaimed) return false;
+
+        if (rewardRank < customerRank) {
+          // Tarjeta anterior ya superada: premio guardado disponible
+          return true;
+        } else if (rewardRank === customerRank) {
+          // Tarjeta actual: sellos acumulados suficientes
+          return (activeCustomer.stamps || 0) >= r.costStamps;
+        }
+        return false;
+      })
+      .sort((a, b) => {
+        const rankDiff = TIER_RANKS[a.minTier || 'BRONZE'] - TIER_RANKS[b.minTier || 'BRONZE'];
+        if (rankDiff !== 0) return rankDiff;
+        return a.costStamps - b.costStamps;
+      });
   }, [config.rewards, isPuntos, activeCustomer]);
 
   // Recompensas exclusivas de niveles superiores bloqueadas para incentivar retención en caja
@@ -192,9 +227,6 @@ export function TerminalPOS() {
   }, [config.rewards, activeCustomer]);
 
   const isRewardReady = availableRewards.length > 0;
-
-  // Obtener workspaceId efectivo del POS
-  const effectiveWsId = workspaceId || (customers.length > 0 ? (customers[0] as any).workspaceId || (customers[0] as any).workspace_id : null);
 
   // 1. Consulta y escucha dedicada para el cliente que está activo en pantalla
   useEffect(() => {
@@ -252,75 +284,6 @@ export function TerminalPOS() {
     };
   }, [activeCustomer?.id]);
 
-  // 2. Escuchar y consultar tokens de canje pendientes store-wide (en todo el local)
-  useEffect(() => {
-    const fetchTokens = async () => {
-      try {
-        const nowIso = new Date().toISOString();
-        let query = supabase
-          .from('loyalty_redemption_tokens')
-          .select('*')
-          .eq('status', 'PENDING')
-          .gt('expires_at', nowIso)
-          .order('created_at', { ascending: false });
-
-        if (effectiveWsId) {
-          query = query.eq('workspace_id', effectiveWsId);
-        }
-
-        const { data, error } = await query;
-        if (!error && data) {
-          const enriched = data.map((t: any) => {
-            const cust = customers.find((c) => c.id === t.customer_id);
-            return {
-              ...t,
-              loyalty_customers: cust ? {
-                id: cust.id,
-                dni: cust.dni,
-                name: cust.name,
-                points: cust.points,
-                stamps: cust.stamps,
-              } : null,
-            };
-          });
-          setStorePendingTokens(enriched);
-        }
-      } catch (err) {
-        console.warn('[TerminalPOS] Error consultando tokens de tienda:', err);
-      }
-    };
-
-    fetchTokens();
-
-    const interval = setInterval(fetchTokens, 2500);
-
-    const channelName = `pos_store_tokens_${effectiveWsId || 'all'}_${Date.now()}`;
-    const channel = supabase
-      .channel(channelName)
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'loyalty_redemption_tokens',
-        },
-        () => {
-          fetchTokens();
-        }
-      )
-      .subscribe();
-
-    return () => {
-      clearInterval(interval);
-      supabase.removeChannel(channel);
-    };
-  }, [effectiveWsId, customers]);
-
-  // Otros tokens pendientes en la tienda (de clientes aún no buscados en caja)
-  const otherPendingTokens = useMemo(() => {
-    return storePendingTokens.filter((t) => !activeCustomer || t.customer_id !== activeCustomer.id);
-  }, [storePendingTokens, activeCustomer]);
-
   const handleValidateTokenSubmit = useCallback(async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     if (!tokenInput.trim()) return;
@@ -340,7 +303,12 @@ export function TerminalPOS() {
       setIsTokenModalOpen(false);
       setTokenInput('');
       setActiveCustomerPendingToken(null);
-      setStorePendingTokens((prev) => prev.filter((t) => t.token_code !== tokenInput.trim()));
+
+      // Foco automático en el monto del ticket para continuar el cobro
+      setTimeout(() => {
+        ticketInputRef.current?.focus();
+        ticketInputRef.current?.select();
+      }, 150);
     } else {
       toast.error(result.message);
     }
@@ -361,7 +329,14 @@ export function TerminalPOS() {
         setActiveDni(result.customerDni);
       }
       setActiveCustomerPendingToken(null);
-      setStorePendingTokens((prev) => prev.filter((t) => t.id !== token.id));
+      setIsTokenModalOpen(false);
+      setTokenInput('');
+
+      // Foco automático en el monto del ticket para continuar el cobro
+      setTimeout(() => {
+        ticketInputRef.current?.focus();
+        ticketInputRef.current?.select();
+      }, 150);
     } else {
       toast.error(result.message);
     }
@@ -398,13 +373,14 @@ export function TerminalPOS() {
     setActiveDni('');
     setDniInput('');
     setTicketAmount('');
+    setActiveCustomerPendingToken(null);
     dniInputRef.current?.focus();
   }, []);
 
   const handleProcess = useCallback(() => {
     const dniToProcess = activeCustomer ? activeCustomer.dni : activeDni;
     if (!dniToProcess) return;
-    if (!ticketAmount || ticketAmount <= 0) return;
+    if (typeof ticketAmount !== 'number' || ticketAmount < 0) return;
     
     const result = processPurchase(dniToProcess, Number(ticketAmount));
     
@@ -461,22 +437,44 @@ export function TerminalPOS() {
   // Keyboard Shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // 1. Focus Input (tecla '/')
-      if (e.key === '/' && document.activeElement !== dniInputRef.current) {
+      // 1. Focus Input DNI (tecla '/')
+      if (e.key === '/' && document.activeElement !== dniInputRef.current && document.activeElement !== ticketInputRef.current) {
         e.preventDefault();
         dniInputRef.current?.focus();
         return;
       }
 
-      // Cerrar modal con escape
-      if (e.key === 'Escape' && isRedeemModalOpen) {
-        setIsRedeemModalOpen(false);
-        setSelectedReward(null);
-        return;
+      // 2. Atajo para Canjear Premio: Alt+C (o letra 'C' si no se está escribiendo en ningún input)
+      const isTyping = document.activeElement?.tagName === 'INPUT' || document.activeElement?.tagName === 'TEXTAREA';
+      if ((e.altKey && e.key.toLowerCase() === 'c') || (!isTyping && e.key.toLowerCase() === 'c')) {
+        if (activeCustomer) {
+          e.preventDefault();
+          setTokenInput(activeCustomerPendingToken?.token_code || '');
+          setIsTokenModalOpen(true);
+          return;
+        }
       }
 
-      // 3. Registrar Visita (tecla 'Enter')
+      // Cerrar modales con escape
+      if (e.key === 'Escape') {
+        if (isTokenModalOpen) {
+          setIsTokenModalOpen(false);
+          setTokenInput('');
+          return;
+        }
+        if (isRedeemModalOpen) {
+          setIsRedeemModalOpen(false);
+          setSelectedReward(null);
+          return;
+        }
+      }
+
+      // 3. Registrar Visita / Compra (tecla 'Enter')
       if (e.key === 'Enter') {
+        if (isTokenModalOpen) {
+          // El formulario del modal gestiona el enter
+          return;
+        }
         if (isRedeemModalOpen) {
           e.preventDefault();
           handleConfirmRedeem();
@@ -485,7 +483,7 @@ export function TerminalPOS() {
 
         if (document.activeElement === dniInputRef.current) return;
         
-        if ((activeCustomer || activeDni) && ticketAmount && ticketAmount > 0) {
+        if ((activeCustomer || activeDni) && typeof ticketAmount === 'number' && ticketAmount >= 0) {
           e.preventDefault();
           handleProcess();
         }
@@ -494,7 +492,7 @@ export function TerminalPOS() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [activeCustomer, activeDni, isRewardReady, isPuntos, ticketAmount, dniInput, config, isRedeemModalOpen, availableRewards, handleConfirmRedeem, handleProcess]);
+  }, [activeCustomer, activeDni, isRewardReady, isPuntos, ticketAmount, dniInput, config, isRedeemModalOpen, isTokenModalOpen, activeCustomerPendingToken, availableRewards, handleConfirmRedeem, handleProcess]);
 
   return (
     <div className="flex flex-col w-full items-center justify-start pb-space-xl">
@@ -573,86 +571,73 @@ export function TerminalPOS() {
           </form>
         </div>
 
-        {/* Banner para solicitudes de canje de cualquier cliente en la tienda */}
-        {otherPendingTokens.length > 0 && (
-          <div className="flex flex-col gap-2">
-            {otherPendingTokens.map((token) => (
-              <div
-                key={token.id}
-                className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-xl bg-amber-500/15 border border-amber-500/40 text-amber-950 animate-in fade-in duration-200"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-amber-600 text-white flex items-center justify-center shrink-0 shadow-sm">
-                    <Gift className="w-5 h-5" />
-                  </div>
-                  <div className="flex flex-col">
-                    <div className="flex items-center gap-2">
-                      <span className="font-sans text-xs font-bold uppercase tracking-wider text-amber-800">
-                        Canje Solicitado en App
-                      </span>
-                      <span className="font-mono text-xs px-2 py-0.5 rounded bg-amber-200 font-bold text-amber-950 tabular-nums">
-                        Código: {token.token_code}
-                      </span>
-                    </div>
-                    <span className="font-sans text-sm font-semibold text-amber-950 mt-0.5">
-                      {token.reward_name} ({token.points_cost > 0 ? `-${token.points_cost} pts` : `-${token.stamps_cost} sellos`})
-                      <span className="font-normal text-xs text-amber-800 ml-2">
-                        • Cliente: {token.loyalty_customers?.name || `DNI ${token.loyalty_customers?.dni || ''}`}
-                      </span>
-                    </span>
-                  </div>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={() => handleApproveToken(token)}
-                  disabled={isValidatingToken}
-                  className="px-4 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-sans text-xs font-bold shadow-sm transition-colors flex items-center justify-center gap-2 shrink-0 disabled:opacity-50 cursor-pointer"
-                >
-                  <Check className="w-4 h-4 stroke-[3]" />
-                  <span>{isValidatingToken ? 'Aprobando...' : 'Aprobar y Entregar'}</span>
-                </button>
-              </div>
-            ))}
-          </div>
-        )}
-
         {/* 2. Tarjeta / Contenedor de Información del Cliente */}
         {activeCustomer ? (
           <div className="bg-surface-container-low/70 rounded-xl p-5 flex flex-col gap-space-md animate-in fade-in zoom-in-95 duration-200">
-            {/* Banner de Canje Solicitado en App */}
-            {activeCustomerPendingToken && (
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-950 animate-in fade-in duration-200">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-sm">
-                    <Gift className="w-5 h-5" />
-                  </div>
-                  <div className="flex flex-col">
-                    <div className="flex items-center gap-2">
-                      <span className="font-sans text-xs font-bold uppercase tracking-wider text-emerald-800">
-                        Canje Solicitado en App
-                      </span>
-                      <span className="font-mono text-xs px-2 py-0.5 rounded bg-emerald-200/80 font-bold text-emerald-900 tabular-nums">
-                        Código: {activeCustomerPendingToken.token_code}
-                      </span>
-                    </div>
-                    <span className="font-sans text-sm font-semibold text-emerald-900 mt-0.5">
-                      {activeCustomerPendingToken.reward_name} ({activeCustomerPendingToken.points_cost > 0 ? `-${activeCustomerPendingToken.points_cost} pts` : `-${activeCustomerPendingToken.stamps_cost} sellos`})
-                    </span>
-                  </div>
+            {/* Cabecera del Cliente con Tier Badge, Visitas y Botón de Canje */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-2 flex-wrap">
+                <div className="w-9 h-9 rounded-full bg-primary text-on-primary flex items-center justify-center font-display text-lg font-bold shadow-sm">
+                  {activeCustomer.name.charAt(0)}
                 </div>
+                <div className="flex flex-col">
+                  <div className="flex items-center gap-2">
+                    <h2 className="font-display text-2xl font-bold text-on-surface tracking-tight">{activeCustomer.name}</h2>
+                    
+                    {/* Badge de Nivel Destacado */}
+                    <span className={`inline-flex items-center gap-1.5 font-mono text-[11px] font-bold px-2.5 py-0.5 rounded-md border shadow-xs ${
+                      activeCustomer.tier === 'GOLD' 
+                        ? 'bg-amber-100 text-amber-900 border-amber-400' 
+                        : activeCustomer.tier === 'SILVER'
+                        ? 'bg-slate-200 text-slate-800 border-slate-400'
+                        : 'bg-amber-50 text-amber-950 border-amber-200'
+                    }`}>
+                      {activeCustomer.tier === 'GOLD' && <Crown className="w-3.5 h-3.5 text-amber-600 fill-amber-600" />}
+                      {activeCustomer.tier === 'SILVER' && <Star className="w-3.5 h-3.5 text-slate-600 fill-slate-500" />}
+                      {activeCustomer.tier === 'BRONZE' && <ShieldCheck className="w-3.5 h-3.5 text-amber-700" />}
+                      {activeCustomer.tier === 'GOLD' ? 'ORO VIP' : activeCustomer.tier === 'SILVER' ? 'PLATA' : 'BRONZE'}
+                    </span>
 
+                    {/* Si es sellos, mostrar tarjetas completadas acumuladas */}
+                    {isSellos && (
+                      <span className="inline-flex items-center gap-1 bg-surface-container text-on-surface-variant font-mono text-[11px] font-semibold px-2.5 py-0.5 rounded-md border border-outline-variant/30">
+                        <CheckCircle2 className="w-3.5 h-3.5 text-secondary" />
+                        {activeCustomer.completedCards || 0} {(activeCustomer.completedCards || 0) === 1 ? 'tarjeta completada' : 'tarjetas completadas'}
+                      </span>
+                    )}
+                  </div>
+                  <span className="font-mono text-xs text-on-surface-variant font-medium mt-0.5">
+                    DNI: <strong className="text-on-surface font-semibold">{activeCustomer.dni}</strong> • Última visita: <strong className="text-on-surface font-semibold">{getDaysSinceLastVisit(activeCustomer.lastVisitDate)}</strong>
+                  </span>
+                </div>
+              </div>
+
+              {/* Botón Principal para Canjear Premio con Shortcut Alt+C */}
+              <div className="flex items-center gap-2 self-start sm:self-auto shrink-0">
                 <button
                   type="button"
-                  onClick={() => handleApproveToken(activeCustomerPendingToken)}
-                  disabled={isValidatingToken}
-                  className="px-4 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-sans text-xs font-bold shadow-sm transition-colors flex items-center justify-center gap-2 shrink-0 disabled:opacity-50 cursor-pointer"
+                  onClick={() => {
+                    setTokenInput(activeCustomerPendingToken?.token_code || '');
+                    setIsTokenModalOpen(true);
+                  }}
+                  title="Canjear premio o escanear QR (Alt+C)"
+                  className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-sans text-xs font-bold shadow-sm transition-all cursor-pointer ${
+                    activeCustomerPendingToken
+                      ? 'bg-emerald-600 hover:bg-emerald-700 text-white ring-2 ring-emerald-400/50'
+                      : 'bg-secondary text-on-secondary hover:bg-secondary/90'
+                  }`}
                 >
-                  <Check className="w-4 h-4 stroke-[3]" />
-                  <span>{isValidatingToken ? 'Aprobando...' : 'Aprobar y Entregar'}</span>
+                  <Gift className="w-4 h-4 shrink-0" />
+                  <span>Canjear Premio</span>
+                  {activeCustomerPendingToken && (
+                    <span className="w-2 h-2 rounded-full bg-emerald-200 animate-pulse inline-block" />
+                  )}
+                  <kbd className="ml-1 font-mono text-[10px] bg-black/20 text-white px-1.5 py-0.5 rounded font-semibold">
+                    Alt+C
+                  </kbd>
                 </button>
               </div>
-            )}
+            </div>
 
             {activeCustomer.isRegistered === false && (
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 px-3.5 py-2 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-800 text-xs font-sans">
@@ -683,46 +668,6 @@ export function TerminalPOS() {
               </div>
             )}
 
-            {/* Cabecera del Cliente con Tier Badge y Beneficios */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-space-xs">
-              <div className="flex items-center gap-2 flex-wrap">
-                <div className="w-8 h-8 rounded-full bg-primary text-on-primary flex items-center justify-center font-display text-lg font-bold">
-                  {activeCustomer.name.charAt(0)}
-                </div>
-                <h2 className="font-display text-2xl font-bold text-on-surface tracking-tight">{activeCustomer.name}</h2>
-                
-                {/* Badge de Nivel Destacado */}
-                <span className={`inline-flex items-center gap-1.5 font-mono text-[11px] font-bold px-2.5 py-0.5 rounded-md border shadow-xs ${
-                  activeCustomer.tier === 'GOLD' 
-                    ? 'bg-amber-100 text-amber-900 border-amber-400' 
-                    : activeCustomer.tier === 'SILVER'
-                    ? 'bg-slate-200 text-slate-800 border-slate-400'
-                    : 'bg-amber-50 text-amber-950 border-amber-200'
-                }`}>
-                  {activeCustomer.tier === 'GOLD' && <Crown className="w-3.5 h-3.5 text-amber-600 fill-amber-600" />}
-                  {activeCustomer.tier === 'SILVER' && <Star className="w-3.5 h-3.5 text-slate-600 fill-slate-500" />}
-                  {activeCustomer.tier === 'BRONZE' && <ShieldCheck className="w-3.5 h-3.5 text-amber-700" />}
-                  {activeCustomer.tier === 'GOLD' ? 'ORO VIP' : activeCustomer.tier === 'SILVER' ? 'PLATA' : 'BRONZE'}
-                </span>
-
-                {/* Si es sellos, mostrar tarjetas completadas acumuladas */}
-                {isSellos && (
-                  <span className="inline-flex items-center gap-1 bg-surface-container text-on-surface-variant font-mono text-[11px] font-semibold px-2.5 py-0.5 rounded-md border border-outline-variant/30">
-                    <CheckCircle2 className="w-3.5 h-3.5 text-secondary" />
-                    {activeCustomer.completedCards || 0} {(activeCustomer.completedCards || 0) === 1 ? 'tarjeta completada' : 'tarjetas completadas'}
-                  </span>
-                )}
-              </div>
-
-              <div className="flex flex-col sm:items-end font-mono text-xs text-on-surface-variant">
-                <span className="flex items-center gap-1">
-                  <Clock className="w-3.5 h-3.5" />
-                  Última visita: <span className="text-on-surface font-semibold ml-1">{getDaysSinceLastVisit(activeCustomer.lastVisitDate)}</span>
-                </span>
-                <span className="font-medium text-on-surface/80 mt-0.5">Visitas históricas: <span className="text-on-surface font-semibold">{activeCustomer.totalVisits}</span></span>
-              </div>
-            </div>
-
             {/* Barra de Progreso hacia el Próximo Nivel */}
             {nextTierProgress && !nextTierProgress.isMax && (
               <div className="bg-surface-container-lowest rounded-xl p-3 flex flex-col gap-1.5 border border-outline-variant/30">
@@ -749,9 +694,22 @@ export function TerminalPOS() {
               {isSellos && (
                 <>
                   <div className="bg-surface-container-lowest rounded-xl p-4 shadow-sm border border-outline-variant/20 flex flex-col justify-between gap-space-md">
+                    {/* Alerta de Tarjeta Completa */}
+                    {displayedStamps >= maxStampsReward && (
+                      <div className="flex items-center gap-2 p-3 rounded-lg bg-emerald-500/15 border border-emerald-500/40 text-emerald-950 font-sans text-xs">
+                        <CheckCircle2 className="w-4 h-4 text-emerald-700 shrink-0" />
+                        <span>
+                          <strong>¡Tarjeta {TIER_LABELS[activeCustomer?.tier || 'BRONZE']} Completa!</strong> ({displayedStamps}/{maxStampsReward} sellos). 
+                          {activeCustomer?.tier === 'GOLD' 
+                            ? ' En la próxima visita reiniciará su ciclo Oro con 1 sello.' 
+                            : ` En la próxima visita pasará a Tarjeta ${TIER_LABELS[getNextTier(activeCustomer?.tier || 'BRONZE')]} iniciando con 1 sello.`}
+                        </span>
+                      </div>
+                    )}
+
                     <div className="flex items-center justify-between">
                       <span className="font-mono text-xs font-bold tracking-wider text-on-surface-variant/80 uppercase">
-                        Tarjeta de Sellos
+                        Tarjeta de Sellos • Nivel {TIER_LABELS[activeCustomer?.tier || 'BRONZE']}
                       </span>
                       <span className="font-mono text-xs bg-surface-container text-on-surface-variant px-2 py-0.5 rounded font-medium">
                         Meta: {maxStampsReward}
@@ -771,18 +729,34 @@ export function TerminalPOS() {
                         const stampNumber = i + 1;
                         const isEarned = stampNumber <= displayedStamps;
                         const isNext = stampNumber === displayedStamps + 1;
-                        const isRewardSlot = config.rewards.some(r => r.costStamps === stampNumber);
+                        const currentTier = activeCustomer?.tier || 'BRONZE';
+                        const rewardAtSlot = config.rewards.find((r) => (r.minTier || 'BRONZE') === currentTier && r.costStamps === stampNumber);
+                        const isRewardSlot = Boolean(rewardAtSlot);
+                        const isClaimedAtSlot = Boolean(rewardAtSlot && (activeCustomer?.claimedRewards || []).includes(rewardAtSlot.id));
                         
                         return (
-                          <div key={i} className={`w-9 h-9 rounded-full flex items-center justify-center font-mono text-sm font-semibold transition-all ${
-                            isEarned ? 'bg-secondary text-on-secondary shadow-sm' : 
-                            isNext ? 'bg-surface-container-high text-on-surface shadow-inner' : 
-                            'bg-surface-container text-on-surface-variant/50'
-                          }`}>
-                            {isRewardSlot 
-                              ? <Gift className="w-4.5 h-4.5" />
-                              : (isEarned ? <Check className="w-4.5 h-4.5 stroke-[3]" /> : stampNumber)
-                            }
+                          <div 
+                            key={i} 
+                            title={isClaimedAtSlot ? `${rewardAtSlot?.name} (Canjeado en esta tarjeta)` : isRewardSlot ? `${rewardAtSlot?.name} (${stampNumber} sellos)` : `Sello ${stampNumber}`}
+                            className={`w-9 h-9 rounded-full flex items-center justify-center font-mono text-sm font-semibold transition-all ${
+                              isClaimedAtSlot
+                                ? 'bg-emerald-950/70 border-2 border-dashed border-emerald-500/80 text-emerald-300 shadow-inner'
+                                : isEarned && isRewardSlot
+                                ? 'bg-amber-500/20 border-2 border-amber-400 text-amber-300 shadow-sm'
+                                : isEarned
+                                ? 'bg-secondary text-on-secondary shadow-sm'
+                                : isNext
+                                ? 'bg-surface-container-high text-on-surface shadow-inner'
+                                : 'bg-surface-container text-on-surface-variant/50'
+                            }`}
+                          >
+                            {isClaimedAtSlot ? (
+                              <Check className="w-4.5 h-4.5 stroke-[3] text-emerald-300" />
+                            ) : isRewardSlot ? (
+                              <Gift className={`w-4.5 h-4.5 ${isEarned ? 'text-amber-300 animate-pulse' : ''}`} />
+                            ) : (
+                              isEarned ? <Check className="w-4.5 h-4.5 stroke-[3]" /> : stampNumber
+                            )}
                           </div>
                         );
                       })}
@@ -928,13 +902,15 @@ export function TerminalPOS() {
               <div className="relative">
                 <span className="absolute left-4 top-1/2 -translate-y-1/2 font-mono text-on-surface-variant font-bold">$</span>
                 <input 
+                  ref={ticketInputRef}
                   type="number"
+                  min="0"
                   value={ticketAmount}
                   onChange={(e) => setTicketAmount(e.target.value === '' ? '' : Number(e.target.value))}
-                  placeholder="Ej. 15000"
+                  placeholder="Ej. 15000 (o 0 para servicio gratis)"
                   className="w-full bg-surface-container-lowest border border-outline-variant/40 rounded-xl py-3.5 pl-9 pr-4 font-display text-lg font-bold text-on-surface outline-none focus:border-primary transition-colors"
                 />
-                {typeof ticketAmount === 'number' && ticketAmount > 0 && (
+                {typeof ticketAmount === 'number' && ticketAmount >= 0 && (
                   isPuntos ? (
                     <div className={`absolute right-4 top-1/2 -translate-y-1/2 inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md font-mono text-[11px] font-bold ${
                       config.tierConfig.doublePointsEnabled && Number(ticketAmount) >= config.tierConfig.doublePointsMinSpend
@@ -1001,27 +977,59 @@ export function TerminalPOS() {
                   </div>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-2">
-                  {availableRewards.map((reward) => (
-                    <button 
-                      key={reward.id} 
-                      type="button" 
-                      onClick={() => handleRedeemClick(reward)} 
-                      className="w-full bg-surface-container-lowest hover:bg-secondary/10 hover:border-secondary/50 border border-secondary/20 text-on-surface font-sans text-sm font-semibold px-4 py-3.5 rounded-xl shadow-sm flex items-center justify-between transition-colors active:scale-[0.99] group"
-                    >
-                      <div className="flex items-center gap-2 truncate">
-                        <Gift className="w-4.5 h-4.5 text-secondary shrink-0" />
-                        <span className="truncate">{reward.name}</span>
-                      </div>
-                      <div className="flex items-center gap-2 shrink-0 pl-2">
-                        <span className="font-mono text-secondary font-bold text-xs">
-                          {isPuntos 
-                            ? `-${reward.costPoints.toLocaleString()} pts` 
-                            : `Requiere ${reward.costStamps} sellos`}
-                        </span>
-                      </div>
-                    </button>
-                  ))}
+                  {availableRewards.map((reward) => {
+                    const isFromPreviousTier = isSellos && TIER_RANKS[reward.minTier || 'BRONZE'] < TIER_RANKS[activeCustomer?.tier || 'BRONZE'];
+                    return (
+                      <button 
+                        key={reward.id} 
+                        type="button" 
+                        onClick={() => handleRedeemClick(reward)} 
+                        className={`w-full bg-surface-container-lowest hover:bg-secondary/10 hover:border-secondary/50 border text-on-surface font-sans text-sm font-semibold px-4 py-3.5 rounded-xl shadow-sm flex items-center justify-between transition-colors active:scale-[0.99] group ${
+                          isFromPreviousTier ? 'border-amber-500/40 bg-amber-500/5' : 'border-secondary/20'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2 truncate">
+                          <Gift className={`w-4.5 h-4.5 shrink-0 ${isFromPreviousTier ? 'text-amber-600' : 'text-secondary'}`} />
+                          <div className="flex flex-col text-left truncate">
+                            <span className="truncate">{reward.name}</span>
+                            {isFromPreviousTier && (
+                              <span className="font-mono text-[10px] text-amber-700 font-bold">
+                                Guardado de Tarjeta {TIER_LABELS[reward.minTier || 'BRONZE']}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0 pl-2">
+                          <span className="font-mono text-secondary font-bold text-xs">
+                            {isPuntos 
+                              ? `-${reward.costPoints.toLocaleString()} pts` 
+                              : isFromPreviousTier
+                              ? '¡Listo para canjear!'
+                              : `Meta ${reward.costStamps} sellos`}
+                          </span>
+                        </div>
+                      </button>
+                    );
+                  })}
                 </div>
+
+                {isSellos && (activeCustomer?.claimedRewards || []).length > 0 && (
+                  <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-secondary/15 text-xs">
+                    <span className="font-sans text-xs font-semibold text-on-surface-variant flex items-center gap-1">
+                      <CheckCircle2 className="w-3.5 h-3.5 text-secondary" />
+                      Ya canjeados en esta tarjeta:
+                    </span>
+                    {(activeCustomer?.claimedRewards || []).map((id) => {
+                      const r = config.rewards.find((reward) => reward.id === id);
+                      if (!r) return null;
+                      return (
+                        <span key={id} className="font-mono text-[11px] px-2 py-0.5 rounded bg-surface-container text-secondary font-bold border border-secondary/20">
+                          {r.name} ✓
+                        </span>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             )}
 
@@ -1038,7 +1046,7 @@ export function TerminalPOS() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-1">
                   {lockedTierRewards.map((reward) => (
                     <div 
-                      key={reward.id}
+                      key={reward.id} 
                       className="p-2.5 rounded-lg bg-surface-container-lowest/80 border border-outline-variant/20 flex items-center justify-between text-xs text-on-surface-variant opacity-85"
                     >
                       <div className="flex items-center gap-2 truncate">
@@ -1060,9 +1068,9 @@ export function TerminalPOS() {
           <button 
             type="button" 
             onClick={handleProcess}
-            disabled={(!activeCustomer && !isNewCustomer) || !ticketAmount || ticketAmount <= 0}
+            disabled={(!activeCustomer && !isNewCustomer) || typeof ticketAmount !== 'number' || ticketAmount < 0}
             className={`w-full font-display text-lg font-bold py-3.5 px-6 rounded-xl shadow-sm flex items-center justify-center gap-3 transition-colors active:scale-[0.99] ${
-              (activeCustomer || isNewCustomer) && ticketAmount && ticketAmount > 0 
+              (activeCustomer || isNewCustomer) && typeof ticketAmount === 'number' && ticketAmount >= 0 
                 ? 'bg-primary hover:bg-primary-container text-on-primary' 
                 : 'bg-surface-container-high text-on-surface-variant/50 cursor-not-allowed'
             }`}
@@ -1075,9 +1083,9 @@ export function TerminalPOS() {
               {isPuntos && typeof ticketAmount === 'number' && ticketAmount > 0 && config.tierConfig.doublePointsEnabled && Number(ticketAmount) >= config.tierConfig.doublePointsMinSpend && (
                 <span className="font-sans text-sm font-medium ml-1.5 opacity-90">(Doble Puntos ⚡)</span>
               )}
-              {isSellos && typeof ticketAmount === 'number' && ticketAmount > 0 && (
+              {isSellos && typeof ticketAmount === 'number' && ticketAmount >= 0 && (
                 <span className="font-sans text-sm font-medium ml-1.5 opacity-90">
-                  ({config.tierConfig.doubleStampEnabled && Number(ticketAmount) >= config.tierConfig.doubleStampMinSpend ? '+2 sellos ⚡' : '+1 sello'})
+                  {config.tierConfig.doubleStampEnabled && Number(ticketAmount) >= config.tierConfig.doubleStampMinSpend ? '(+2 sellos ⚡)' : '(+1 sello)'}
                 </span>
               )}
             </span>
@@ -1099,9 +1107,7 @@ export function TerminalPOS() {
                 ¿Estás seguro que deseas canjear el premio <strong>{selectedReward.name}</strong> de <strong className="text-on-surface font-semibold">{activeCustomer?.name}</strong>?
                 {isPuntos 
                   ? ` Se descontarán ${selectedReward.costPoints.toLocaleString()} pts de su billetera.` 
-                  : (selectedReward.costStamps >= maxStampsReward 
-                      ? ` Al ser la meta final, se consumirán ${maxStampsReward} sellos y la tarjeta se reiniciará.` 
-                      : ` Por ser una meta intermedia, este premio NO consumirá los sellos acumulados.`)}
+                  : ` Este premio quedará registrado como canjeado en la tarjeta y NO descontará los sellos acumulados.`}
               </p>
             </div>
             <div className="bg-surface-container-low p-4 flex gap-3 justify-end border-t border-outline-variant/20">
@@ -1150,6 +1156,28 @@ export function TerminalPOS() {
                   <X className="w-5 h-5" />
                 </button>
               </div>
+
+              {activeCustomerPendingToken && (
+                <div className="p-3 rounded-xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2.5">
+                    <Gift className="w-5 h-5 text-emerald-700 shrink-0" />
+                    <div>
+                      <span className="text-[10px] uppercase font-bold text-emerald-800">Canje detectado de la App</span>
+                      <p className="text-xs font-semibold text-emerald-950">
+                        {activeCustomerPendingToken.reward_name}
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleApproveToken(activeCustomerPendingToken)}
+                    disabled={isValidatingToken}
+                    className="px-3 py-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white font-sans text-xs font-bold shrink-0 cursor-pointer shadow-xs"
+                  >
+                    Aprobar ({activeCustomerPendingToken.token_code})
+                  </button>
+                </div>
+              )}
 
               <p className="font-sans text-xs text-on-surface-variant leading-relaxed">
                 Ingresa el código numérico de 6 dígitos que el cliente tiene en su pantalla o escanea el QR generado con un lector:
