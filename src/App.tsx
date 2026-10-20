@@ -15,6 +15,11 @@ import { useLoyaltyStore } from './store/useLoyaltyStore';
 function App() {
   const { session, user, isLoading, initialize, workspaceId } = useAuthStore();
   const fetchInitialData = useLoyaltyStore((state) => state.fetchInitialData);
+  const isDarkMode = useLoyaltyStore((state) => state.isDarkMode);
+
+  useEffect(() => {
+    document.documentElement.classList.toggle('dark', isDarkMode);
+  }, [isDarkMode]);
 
   useEffect(() => {
     initialize();

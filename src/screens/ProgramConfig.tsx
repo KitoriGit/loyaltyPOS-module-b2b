@@ -85,7 +85,7 @@ export function ProgramConfig() {
         <div className="flex flex-col">
           <div className="flex items-center gap-space-sm">
             <h1 className="font-display text-3xl font-bold text-on-surface tracking-tight">Motor de Retención</h1>
-            <span className="px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-900 border border-amber-300 font-mono text-xs font-bold">v3.0 Craft</span>
+            <span className="px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-900 border border-amber-300 font-mono text-xs font-bold dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-700/50">v3.0 Craft</span>
           </div>
           <p className="font-sans text-sm text-on-surface-variant mt-1">Configura las reglas de fidelización, tiers de clientes y recompensas para tus terminales activas.</p>
         </div>
@@ -128,7 +128,7 @@ export function ProgramConfig() {
               <div className="flex items-center gap-2">
                 <h3 className="font-display text-lg font-bold text-on-surface">Programa de Puntos</h3>
                 <span className={`px-2 py-0.5 rounded-md font-mono text-[11px] font-bold ${
-                  isPuntos ? 'bg-emerald-100 text-emerald-900 border border-emerald-300' : 'bg-surface-container text-on-surface-variant'
+                  isPuntos ? 'bg-emerald-100 text-emerald-900 border border-emerald-300 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800/60' : 'bg-surface-container text-on-surface-variant'
                 }`}>
                   {isPuntos ? 'Activo' : 'Inactivo'}
                 </span>
@@ -140,7 +140,7 @@ export function ProgramConfig() {
             
             <div className="mt-space-md pt-space-sm">
               <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full font-mono text-[11px] font-semibold ${
-                isPuntos ? 'bg-emerald-50 text-emerald-900 border border-emerald-200' : 'bg-surface-container text-on-surface-variant'
+                isPuntos ? 'bg-emerald-50 text-emerald-900 border border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800/60' : 'bg-surface-container text-on-surface-variant'
               }`}>
                 <ThumbsUp className="w-3.5 h-3.5 text-secondary" />
                 Recomendado para retail y gastronomía
@@ -174,7 +174,7 @@ export function ProgramConfig() {
               <div className="flex items-center gap-2">
                 <h3 className="font-display text-lg font-bold text-on-surface">Tarjeta de Sellos</h3>
                 <span className={`px-2 py-0.5 rounded-md font-mono text-[11px] font-bold ${
-                  isSellos ? 'bg-emerald-100 text-emerald-900 border border-emerald-300' : 'bg-surface-container text-on-surface-variant'
+                  isSellos ? 'bg-emerald-100 text-emerald-900 border border-emerald-300 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800/60' : 'bg-surface-container text-on-surface-variant'
                 }`}>
                   {isSellos ? 'Activo' : 'Inactivo'}
                 </span>
@@ -186,7 +186,7 @@ export function ProgramConfig() {
             
             <div className="mt-space-md pt-space-sm">
               <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full font-mono text-[11px] font-semibold ${
-                isSellos ? 'bg-amber-50 text-amber-900 border border-amber-200' : 'bg-surface-container text-on-surface-variant'
+                isSellos ? 'bg-amber-50 text-amber-900 border border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800/60' : 'bg-surface-container text-on-surface-variant'
               }`}>
                 <Coffee className="w-3.5 h-3.5 text-secondary" />
                 Ideal para cafeterías de especialidad y bakery
@@ -265,7 +265,7 @@ export function ProgramConfig() {
                 : 'Configura las tarjetas de sellos completadas para subir de nivel y el acelerador de doble sello.'}
             </p>
           </div>
-          <span className="px-2.5 py-1 rounded-full bg-amber-50 text-amber-900 font-mono text-[11px] font-bold border border-amber-300">
+          <span className="px-2.5 py-1 rounded-full bg-amber-50 text-amber-900 font-mono text-[11px] font-bold border border-amber-300 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-700/50">
             Bronze • Plata • Oro
           </span>
         </div>
@@ -276,7 +276,7 @@ export function ProgramConfig() {
           <div className="p-4 rounded-xl bg-surface-container-low flex flex-col justify-between gap-3 border border-outline-variant/50">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <span className="w-7 h-7 rounded-lg bg-[#f1f3f5] text-[#334155] border border-[#94a3b8]/60 flex items-center justify-center font-bold text-xs shadow-xs">
+                <span className="w-7 h-7 rounded-lg bg-[#f1f3f5] text-[#334155] border border-[#94a3b8]/60 dark:bg-[#252a33] dark:text-[#cbd5e1] dark:border-[#475569]/60 flex items-center justify-center font-bold text-xs shadow-xs">
                   🥈
                 </span>
                 <div>
@@ -284,7 +284,7 @@ export function ProgramConfig() {
                   <span className="font-sans text-[11px] text-on-surface-variant">Cliente Habitual</span>
                 </div>
               </div>
-              <span className="font-mono text-xs font-semibold px-2 py-0.5 rounded bg-surface-container text-[#334155] border border-outline-variant/40">
+              <span className="font-mono text-xs font-semibold px-2 py-0.5 rounded bg-surface-container text-[#334155] dark:text-[#cbd5e1] border border-outline-variant/40">
                 Tier 2
               </span>
             </div>
@@ -317,10 +317,10 @@ export function ProgramConfig() {
           </div>
 
           {/* Nivel Oro */}
-          <div className="p-4 rounded-xl bg-surface-container-low flex flex-col justify-between gap-3 border border-amber-300">
+          <div className="p-4 rounded-xl bg-surface-container-low flex flex-col justify-between gap-3 border border-amber-300 dark:border-amber-800/60">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <span className="w-7 h-7 rounded-lg bg-[#fef3c7] text-[#92400e] border border-[#f59e0b]/50 flex items-center justify-center font-bold text-xs shadow-xs">
+                <span className="w-7 h-7 rounded-lg bg-[#fef3c7] text-[#92400e] border border-[#f59e0b]/50 dark:bg-[#3b2d18] dark:text-[#fde68a] dark:border-[#d97706]/40 flex items-center justify-center font-bold text-xs shadow-xs">
                   🥇
                 </span>
                 <div>
@@ -328,7 +328,7 @@ export function ProgramConfig() {
                   <span className="font-sans text-[11px] text-on-surface-variant">Cliente Más Valioso</span>
                 </div>
               </div>
-              <span className="font-mono text-xs font-semibold px-2 py-0.5 rounded bg-amber-100 text-[#92400e] border border-amber-300">
+              <span className="font-mono text-xs font-semibold px-2 py-0.5 rounded bg-amber-100 text-[#92400e] border border-amber-300 dark:bg-amber-950/50 dark:text-[#fde68a] dark:border-amber-800/60">
                 Tier 3 (VIP)
               </span>
             </div>
@@ -366,13 +366,13 @@ export function ProgramConfig() {
           <div className="p-4 rounded-xl bg-surface-container-low flex flex-col gap-3 border border-outline-variant/50">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2.5">
-                <div className="w-9 h-9 rounded-lg bg-emerald-50 text-primary flex items-center justify-center shrink-0 border border-emerald-200">
+                <div className="w-9 h-9 rounded-lg bg-emerald-50 text-primary flex items-center justify-center shrink-0 border border-emerald-200 dark:bg-emerald-950/40 dark:border-emerald-800/60">
                   <Zap className="w-5 h-5 text-secondary fill-secondary" />
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
                     <h4 className="font-display text-sm font-bold text-on-surface">Acelerador: Doble Puntos por Consumo</h4>
-                    <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-900 font-mono text-[10px] font-bold border border-emerald-300">
+                    <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-900 font-mono text-[10px] font-bold border border-emerald-300 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800/60">
                       2x Puntos
                     </span>
                   </div>
@@ -418,13 +418,13 @@ export function ProgramConfig() {
           <div className="p-4 rounded-xl bg-surface-container-low flex flex-col gap-3 border border-outline-variant/50">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2.5">
-                <div className="w-9 h-9 rounded-lg bg-amber-50 text-secondary flex items-center justify-center shrink-0 border border-amber-200">
+                <div className="w-9 h-9 rounded-lg bg-amber-50 text-secondary flex items-center justify-center shrink-0 border border-amber-200 dark:bg-amber-950/40 dark:border-amber-800/60">
                   <Zap className="w-5 h-5 text-secondary fill-secondary" />
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
                     <h4 className="font-display text-sm font-bold text-on-surface">Acelerador: Doble Sello por Consumo</h4>
-                    <span className="px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 font-mono text-[10px] font-bold border border-amber-300">
+                    <span className="px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 font-mono text-[10px] font-bold border border-amber-300 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800/60">
                       2x Sellos
                     </span>
                   </div>
@@ -526,7 +526,7 @@ export function ProgramConfig() {
             onClick={() => setSelectedTierFilter('BRONZE')}
             className={`px-3 py-1.5 rounded-lg font-sans text-xs font-semibold transition-all flex items-center gap-1 shrink-0 cursor-pointer ${
               selectedTierFilter === 'BRONZE'
-                ? 'bg-[#f5e6d3] text-[#78350f] shadow-xs border border-[#d97706]/50'
+                ? 'bg-[#f5e6d3] text-[#78350f] shadow-xs border border-[#d97706]/50 dark:bg-[#382618] dark:text-[#fdba74] dark:border-[#d97706]/60'
                 : 'text-on-surface-variant hover:text-on-surface'
             }`}
           >
@@ -537,7 +537,7 @@ export function ProgramConfig() {
             onClick={() => setSelectedTierFilter('SILVER')}
             className={`px-3 py-1.5 rounded-lg font-sans text-xs font-semibold transition-all flex items-center gap-1 shrink-0 cursor-pointer ${
               selectedTierFilter === 'SILVER'
-                ? 'bg-[#f1f3f5] text-[#334155] shadow-xs border border-[#94a3b8]/60'
+                ? 'bg-[#f1f3f5] text-[#334155] shadow-xs border border-[#94a3b8]/60 dark:bg-[#252a33] dark:text-[#cbd5e1] dark:border-[#475569]/70'
                 : 'text-on-surface-variant hover:text-on-surface'
             }`}
           >
@@ -548,7 +548,7 @@ export function ProgramConfig() {
             onClick={() => setSelectedTierFilter('GOLD')}
             className={`px-3 py-1.5 rounded-lg font-sans text-xs font-semibold transition-all flex items-center gap-1 shrink-0 cursor-pointer ${
               selectedTierFilter === 'GOLD'
-                ? 'bg-[#fef3c7] text-[#92400e] shadow-xs border border-[#f59e0b]/50'
+                ? 'bg-[#fef3c7] text-[#92400e] shadow-xs border border-[#f59e0b]/50 dark:bg-[#3b2d18] dark:text-[#fde68a] dark:border-[#d97706]/60'
                 : 'text-on-surface-variant hover:text-on-surface'
             }`}
           >
@@ -571,24 +571,24 @@ export function ProgramConfig() {
 
         {/* Simulador Físico de Tarjeta para Programa de Sellos */}
         {isSellos && selectedTierFilter !== 'ALL' && (
-          <div className="p-4 rounded-xl kraft-cardboard border-2 border-dashed border-[#cfbeaa] flex flex-col gap-3 shadow-xs">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#dfd2be] pb-2">
+          <div className="p-4 rounded-xl kraft-cardboard border-2 border-dashed border-[#cfbeaa] dark:border-[#4d3f33] dark:bg-[#1e1915] flex flex-col gap-3 shadow-xs">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#dfd2be] dark:border-[#3d3126] pb-2">
               <div className="flex items-center gap-2">
-                <Coffee className="w-4 h-4 text-[#78350f]" />
-                <span className="font-mono text-xs font-bold text-[#78350f] uppercase">
+                <Coffee className="w-4 h-4 text-[#78350f] dark:text-[#f59e0b]" />
+                <span className="font-mono text-xs font-bold text-[#78350f] dark:text-[#f59e0b] uppercase">
                   Simulación de Tarjeta Artesanal ({selectedTierFilter === 'GOLD' ? 'Oro VIP' : selectedTierFilter === 'SILVER' ? 'Plata' : 'Bronce'})
                 </span>
-                <span className="font-mono text-xs px-2.5 py-0.5 rounded-full bg-[#ebdcc8] text-[#5c3d2e] font-bold border border-[#d8c5ad]">
+                <span className="font-mono text-xs px-2.5 py-0.5 rounded-full bg-[#ebdcc8] text-[#5c3d2e] dark:bg-[#2e241c] dark:text-[#d4af37] font-bold border border-[#d8c5ad] dark:border-[#524032]">
                   {currentTierMaxStamps} Sellos
                 </span>
               </div>
-              <span className="font-sans text-[11px] text-[#786455]">
+              <span className="font-sans text-[11px] text-[#786455] dark:text-[#a89a8c]">
                 Longitud definida por el premio mayor ({currentTierMaxStamps} sellos)
               </span>
             </div>
 
             {/* Grid de sellos físico simulado */}
-            <div className="flex flex-wrap items-center gap-2.5 p-3 rounded-xl bg-[#faedd9]/60 border border-[#dfd2be] shadow-inner">
+            <div className="flex flex-wrap items-center gap-2.5 p-3 rounded-xl bg-[#faedd9]/60 dark:bg-[#16120e] border border-[#dfd2be] dark:border-[#3d3126] shadow-inner">
               {Array.from({ length: currentTierMaxStamps }).map((_, i) => {
                 const slot = i + 1;
                 const rewardInSlot = config.rewards.find(r => (r.minTier || 'BRONZE') === selectedTierFilter && r.costStamps === slot);
@@ -597,8 +597,8 @@ export function ProgramConfig() {
                     key={slot}
                     className={`w-10 h-10 rounded-full flex flex-col items-center justify-center font-mono text-xs font-bold transition-all ${
                       rewardInSlot
-                        ? 'bg-[#b45309] text-white border-2 border-amber-300 shadow-xs'
-                        : 'bg-[#ede3cf] text-[#786455] border border-dashed border-[#d8c8b4]'
+                        ? 'bg-[#b45309] text-white border-2 border-amber-300 dark:border-amber-400 shadow-xs'
+                        : 'bg-[#ede3cf] text-[#786455] border border-dashed border-[#d8c8b4] dark:bg-[#241d17] dark:text-[#8c7b6d] dark:border-[#4a392b]'
                     }`}
                     title={rewardInSlot ? `Premio: ${rewardInSlot.name} (${slot} sellos)` : `Sello ${slot}`}
                   >
@@ -612,7 +612,7 @@ export function ProgramConfig() {
               })}
             </div>
 
-            <div className="text-[11px] font-sans text-[#786455] flex items-center gap-1.5 px-1">
+            <div className="text-[11px] font-sans text-[#786455] dark:text-[#a89a8c] flex items-center gap-1.5 px-1">
               <Lightbulb className="w-3.5 h-3.5 text-secondary shrink-0" />
               <span>
                 {selectedTierFilter === 'BRONZE' && 'Al acumular los sellos de Bronce, en la visita #11 el cliente asciende a Tarjeta Plata con 1 sello. Los premios no canjeados se conservan como guardados.'}
@@ -650,9 +650,9 @@ export function ProgramConfig() {
                   <div className="flex items-center gap-2.5 self-end sm:self-auto">
                     {/* Badge de Tier */}
                     <span className={`px-2.5 py-0.5 rounded-full font-mono text-[11px] font-bold flex items-center gap-1 shadow-xs border ${
-                      tier === 'GOLD' ? 'bg-[#fef3c7] text-[#92400e] border-[#f59e0b]/50' :
-                      tier === 'SILVER' ? 'bg-[#f1f3f5] text-[#334155] border-[#94a3b8]/60' :
-                      'bg-[#f5e6d3] text-[#78350f] border-[#d97706]/40'
+                      tier === 'GOLD' ? 'bg-[#fef3c7] text-[#92400e] border-[#f59e0b]/50 dark:bg-[#3b2d18] dark:text-[#fde68a] dark:border-[#d97706]/40' :
+                      tier === 'SILVER' ? 'bg-[#f1f3f5] text-[#334155] border-[#94a3b8]/60 dark:bg-[#252a33] dark:text-[#cbd5e1] dark:border-[#475569]/60' :
+                      'bg-[#f5e6d3] text-[#78350f] border-[#d97706]/40 dark:bg-[#382618] dark:text-[#fdba74] dark:border-[#d97706]/40'
                     }`}>
                       {tier === 'GOLD' ? '🥇 Oro VIP' : tier === 'SILVER' ? '🥈 Plata' : '🥉 Bronze (Todos)'}
                     </span>
@@ -738,7 +738,7 @@ export function ProgramConfig() {
             className="bg-surface-container-lowest rounded-2xl shadow-xl w-full max-w-sm overflow-hidden flex flex-col animate-in zoom-in-95 duration-200 border border-outline-variant/60"
           >
             <div className="p-6 flex flex-col gap-4">
-              <div className="w-10 h-10 rounded-full bg-amber-50 text-secondary flex items-center justify-center mb-1 border border-amber-200">
+              <div className="w-10 h-10 rounded-full bg-amber-50 text-secondary flex items-center justify-center mb-1 border border-amber-200 dark:bg-amber-950/40 dark:border-amber-800/60">
                 <Ticket className="w-5 h-5" />
               </div>
               <h3 className="font-display text-xl font-bold text-on-surface">
@@ -786,7 +786,7 @@ export function ProgramConfig() {
                       onClick={() => setRewardForm({ ...rewardForm, minTier: 'BRONZE' })}
                       className={`p-2 rounded-lg text-center font-sans text-xs font-semibold transition-all border cursor-pointer ${
                         rewardForm.minTier === 'BRONZE'
-                          ? 'bg-[#f5e6d3] text-[#78350f] border-[#d97706]/70 shadow-xs'
+                          ? 'bg-[#f5e6d3] text-[#78350f] border-[#d97706]/70 shadow-xs dark:bg-[#382618] dark:text-[#fdba74] dark:border-[#d97706]/60'
                           : 'bg-surface-container-low text-on-surface-variant border-transparent hover:bg-surface-container'
                       }`}
                     >
@@ -799,7 +799,7 @@ export function ProgramConfig() {
                       onClick={() => setRewardForm({ ...rewardForm, minTier: 'SILVER' })}
                       className={`p-2 rounded-lg text-center font-sans text-xs font-semibold transition-all border cursor-pointer ${
                         rewardForm.minTier === 'SILVER'
-                          ? 'bg-[#f1f3f5] text-[#334155] border-[#94a3b8]/70 shadow-xs'
+                          ? 'bg-[#f1f3f5] text-[#334155] border-[#94a3b8]/70 shadow-xs dark:bg-[#252a33] dark:text-[#cbd5e1] dark:border-[#475569]/70'
                           : 'bg-surface-container-low text-on-surface-variant border-transparent hover:bg-surface-container'
                       }`}
                     >
@@ -812,7 +812,7 @@ export function ProgramConfig() {
                       onClick={() => setRewardForm({ ...rewardForm, minTier: 'GOLD' })}
                       className={`p-2 rounded-lg text-center font-sans text-xs font-semibold transition-all border cursor-pointer ${
                         rewardForm.minTier === 'GOLD'
-                          ? 'bg-[#fef3c7] text-[#92400e] border-[#f59e0b]/70 shadow-xs'
+                          ? 'bg-[#fef3c7] text-[#92400e] border-[#f59e0b]/70 shadow-xs dark:bg-[#3b2d18] dark:text-[#fde68a] dark:border-[#d97706]/60'
                           : 'bg-surface-container-low text-on-surface-variant border-transparent hover:bg-surface-container'
                       }`}
                     >

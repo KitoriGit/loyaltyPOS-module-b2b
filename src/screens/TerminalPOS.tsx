@@ -596,14 +596,14 @@ export function TerminalPOS() {
                     {/* Badge de Nivel Destacado (Bronze, Silver, Gold VIP) */}
                     <span className={`inline-flex items-center gap-1.5 font-mono text-[11px] font-bold px-2.5 py-0.5 rounded-md border shadow-xs ${
                       activeCustomer.tier === 'GOLD' 
-                        ? 'bg-[#fef3c7] text-[#92400e] border-[#f59e0b]/50 shadow-[0_0_8px_rgba(245,158,11,0.2)]' 
+                        ? 'bg-[#fef3c7] dark:bg-[#451a03] text-[#92400e] dark:text-[#fde68a] border-[#f59e0b]/50 dark:border-[#d97706]/70 shadow-[0_0_8px_rgba(245,158,11,0.2)] dark:shadow-[0_0_12px_rgba(245,158,11,0.35)]' 
                         : activeCustomer.tier === 'SILVER'
-                        ? 'bg-[#f1f3f5] text-[#334155] border-[#94a3b8]/60'
-                        : 'bg-[#f5e6d3] text-[#78350f] border-[#d97706]/40'
+                        ? 'bg-[#f1f3f5] dark:bg-[#1e293b] text-[#334155] dark:text-[#cbd5e1] border-[#94a3b8]/60 dark:border-[#475569]'
+                        : 'bg-[#f5e6d3] dark:bg-[#2e1d13] text-[#78350f] dark:text-[#fed7aa] border-[#d97706]/40 dark:border-[#9a3412]/50'
                     }`}>
-                      {activeCustomer.tier === 'GOLD' && <Crown className="w-3.5 h-3.5 text-amber-600 fill-amber-500" />}
-                      {activeCustomer.tier === 'SILVER' && <Star className="w-3.5 h-3.5 text-slate-600 fill-slate-400" />}
-                      {activeCustomer.tier === 'BRONZE' && <ShieldCheck className="w-3.5 h-3.5 text-amber-800" />}
+                      {activeCustomer.tier === 'GOLD' && <Crown className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 fill-amber-500" />}
+                      {activeCustomer.tier === 'SILVER' && <Star className="w-3.5 h-3.5 text-slate-600 dark:text-slate-300 fill-slate-400" />}
+                      {activeCustomer.tier === 'BRONZE' && <ShieldCheck className="w-3.5 h-3.5 text-amber-800 dark:text-amber-400" />}
                       {activeCustomer.tier === 'GOLD' ? 'ORO VIP' : activeCustomer.tier === 'SILVER' ? 'PLATA' : 'BRONZE'}
                     </span>
 
@@ -632,7 +632,7 @@ export function TerminalPOS() {
                   title="Canjear premio o escanear QR (Alt+C)"
                   className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-sans text-xs font-bold transition-all cursor-pointer ${
                     activeCustomerPendingToken || isRewardReady
-                      ? 'bg-[#b45309] hover:bg-[#92400e] text-white warm-pulse-reward ring-2 ring-amber-400/60 shadow-md'
+                      ? 'bg-[#b45309] hover:bg-[#92400e] dark:bg-[#d97706] dark:hover:bg-[#b45309] text-white warm-pulse-reward ring-2 ring-amber-400/60 dark:ring-amber-500/80 shadow-md dark:shadow-[0_0_18px_rgba(217,119,6,0.5)]'
                       : 'bg-surface-container hover:bg-surface-container-high text-on-surface border border-outline-variant/60 shadow-xs'
                   }`}
                 >
@@ -649,12 +649,12 @@ export function TerminalPOS() {
             </div>
 
             {activeCustomer.isRegistered === false && (
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 px-3.5 py-2 rounded-lg bg-amber-50 border border-amber-200 text-amber-900 text-xs font-sans">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 px-3.5 py-2 rounded-lg bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-amber-900 dark:text-amber-200 text-xs font-sans">
                 <div className="flex items-center gap-2">
                   <QrCode className="w-4 h-4 text-secondary shrink-0" />
                   <span><strong>Cuenta pendiente de activación:</strong> Este cliente suma con su DNI pero aún no activó su cuenta en la app.</span>
                 </div>
-                <span className="font-mono text-[10px] font-bold px-2 py-0.5 rounded bg-amber-100 text-amber-900 shrink-0 self-start sm:self-auto border border-amber-300">
+                <span className="font-mono text-[10px] font-bold px-2 py-0.5 rounded bg-amber-100 dark:bg-amber-900/60 text-amber-900 dark:text-amber-200 shrink-0 self-start sm:self-auto border border-amber-300 dark:border-amber-700">
                   Invitar a escanear QR
                 </span>
               </div>
@@ -662,8 +662,8 @@ export function TerminalPOS() {
 
             {/* Alerta de Inactividad si está en riesgo o fue degradado */}
             {tierStatus?.isAtRisk && (
-              <div className="flex items-center gap-2 px-3.5 py-2 rounded-lg bg-amber-50 border border-amber-300 text-amber-900 text-xs font-sans">
-                <AlertTriangle className="w-4 h-4 text-amber-700 shrink-0" />
+              <div className="flex items-center gap-2 px-3.5 py-2 rounded-lg bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-800 text-amber-900 dark:text-amber-200 text-xs font-sans">
+                <AlertTriangle className="w-4 h-4 text-amber-700 dark:text-amber-400 shrink-0" />
                 <span>
                   <strong>¡En riesgo de inactividad!</strong> No visita desde hace {tierStatus.daysInactive} días. Perderá su nivel si no registra compras antes de los {config.tierConfig.inactivityDaysDowngrade} días.
                 </span>
@@ -671,8 +671,8 @@ export function TerminalPOS() {
             )}
 
             {tierStatus?.isDowngraded && (
-              <div className="flex items-center gap-2 px-3.5 py-2 rounded-lg bg-stone-100 border border-stone-300 text-stone-800 text-xs font-sans">
-                <AlertTriangle className="w-4 h-4 text-stone-600 shrink-0" />
+              <div className="flex items-center gap-2 px-3.5 py-2 rounded-lg bg-stone-100 dark:bg-stone-900/60 border border-stone-300 dark:border-stone-800 text-stone-800 dark:text-stone-300 text-xs font-sans">
+                <AlertTriangle className="w-4 h-4 text-stone-600 dark:text-stone-400 shrink-0" />
                 <span>
                   <strong>Nivel ajustado por inactividad:</strong> Inactivo por {tierStatus.daysInactive} días (&gt; {config.tierConfig.inactivityDaysDowngrade} días). Sumando visitas hoy recuperará su nivel.
                 </span>
@@ -704,11 +704,11 @@ export function TerminalPOS() {
               {/* VISTA SELLOS - TACTILE KRAFT CARDBOARD STAMP CARD */}
               {isSellos && (
                 <>
-                  <div className="kraft-cardboard rounded-2xl p-5 md:p-6 shadow-[0_2px_10px_rgba(69,26,3,0.06)] border-2 border-dashed border-[#cfbeaa] flex flex-col gap-4 relative overflow-hidden">
+                  <div className="kraft-cardboard rounded-2xl p-5 md:p-6 shadow-[0_2px_10px_rgba(69,26,3,0.06)] dark:shadow-[0_4px_16px_rgba(0,0,0,0.45)] border-2 border-dashed border-[#cfbeaa] dark:border-[#4d3f33] flex flex-col gap-4 relative overflow-hidden">
                     {/* Alerta de Tarjeta Completa */}
                     {displayedStamps >= maxStampsReward && (
-                      <div className="flex items-center gap-2 p-3 rounded-xl bg-emerald-100/90 border border-emerald-300 text-emerald-950 font-sans text-xs shadow-xs">
-                        <CheckCircle2 className="w-4 h-4 text-emerald-700 shrink-0" />
+                      <div className="flex items-center gap-2 p-3 rounded-xl bg-emerald-100/90 dark:bg-emerald-950/80 border border-emerald-300 dark:border-emerald-700 text-emerald-950 dark:text-emerald-200 font-sans text-xs shadow-xs">
+                        <CheckCircle2 className="w-4 h-4 text-emerald-700 dark:text-emerald-400 shrink-0" />
                         <span>
                           <strong>¡Tarjeta {TIER_LABELS[activeCustomer?.tier || 'BRONZE']} Completa!</strong> ({displayedStamps}/{maxStampsReward} sellos). 
                           {activeCustomer?.tier === 'GOLD' 
@@ -719,30 +719,30 @@ export function TerminalPOS() {
                     )}
 
                     {/* Cabecera Kraft Cardboard */}
-                    <div className="flex items-center justify-between border-b border-[#dfd2be] pb-2.5">
+                    <div className="flex items-center justify-between border-b border-[#dfd2be] dark:border-[#3d3228] pb-2.5">
                       <div className="flex items-center gap-2">
-                        <Coffee className="w-4 h-4 text-[#78350f]" />
-                        <span className="font-mono text-xs font-bold tracking-wider text-[#78350f] uppercase">
+                        <Coffee className="w-4 h-4 text-[#78350f] dark:text-[#f59e0b]" />
+                        <span className="font-mono text-xs font-bold tracking-wider text-[#78350f] dark:text-[#f59e0b] uppercase">
                           Tarjeta Artesanal • Nivel {TIER_LABELS[activeCustomer?.tier || 'BRONZE']}
                         </span>
                       </div>
-                      <span className="font-mono text-xs bg-[#ebdcc8] text-[#5c3d2e] px-2.5 py-0.5 rounded-full font-bold border border-[#d8c5ad]">
+                      <span className="font-mono text-xs bg-[#ebdcc8] dark:bg-[#2c221a] text-[#5c3d2e] dark:text-[#f3d9b8] px-2.5 py-0.5 rounded-full font-bold border border-[#d8c5ad] dark:border-[#4d3d2f]">
                         Meta: {maxStampsReward} Sellos
                       </span>
                     </div>
 
                     <div className="flex items-baseline justify-between">
                       <div className="flex items-baseline gap-2">
-                        <span className="font-display text-4xl font-extrabold text-[#3a2010] leading-none">
+                        <span className="font-display text-4xl font-extrabold text-[#3a2010] dark:text-[#f5ede4] leading-none">
                           {displayedStamps}
                         </span>
-                        <span className="font-display text-lg text-[#786455] font-semibold">
+                        <span className="font-display text-lg text-[#786455] dark:text-[#a3988c] font-semibold">
                           / {maxStampsReward} sellos acumulados
                         </span>
                       </div>
                       {displayedStamps >= maxStampsReward && (
-                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-100/90 text-emerald-900 border border-emerald-300 font-mono text-xs font-bold animate-pulse">
-                          <CheckCircle2 className="w-4 h-4 text-emerald-700" />
+                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-100/90 dark:bg-emerald-950/80 text-emerald-900 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700 font-mono text-xs font-bold animate-pulse">
+                          <CheckCircle2 className="w-4 h-4 text-emerald-700 dark:text-emerald-400" />
                           ¡Tarjeta Completa!
                         </span>
                       )}
@@ -764,7 +764,7 @@ export function TerminalPOS() {
                             <div 
                               key={i} 
                               title={`${rewardAtSlot?.name} (Canjeado en esta tarjeta)`}
-                              className="w-11 h-11 rounded-full flex flex-col items-center justify-center font-mono text-xs font-bold bg-[#064e3b] text-[#a7f3d0] border-2 border-[#10b981] shadow-inner transform rotate-1 transition-all"
+                              className="w-11 h-11 rounded-full flex flex-col items-center justify-center font-mono text-xs font-bold bg-[#064e3b] text-[#a7f3d0] border-2 border-[#10b981] shadow-inner dark:shadow-[0_0_12px_rgba(16,185,129,0.35)] transform rotate-1 transition-all"
                             >
                               <Check className="w-5 h-5 stroke-[3]" />
                               <span className="text-[8px] leading-tight font-extrabold tracking-tighter">CANJ</span>
@@ -777,7 +777,7 @@ export function TerminalPOS() {
                             <div 
                               key={i} 
                               title={`${rewardAtSlot?.name} (Premio listo para canjear)`}
-                              className="w-11 h-11 rounded-full flex flex-col items-center justify-center font-mono text-xs font-bold bg-[#b45309] text-white border-2 border-amber-300 shadow-md ring-2 ring-amber-400/50 transform -rotate-2 cursor-pointer transition-all hover:scale-105"
+                              className="w-11 h-11 rounded-full flex flex-col items-center justify-center font-mono text-xs font-bold bg-[#b45309] dark:bg-[#d97706] text-white border-2 border-amber-300 dark:border-amber-400 shadow-md ring-2 ring-amber-400/50 dark:shadow-[0_0_16px_rgba(245,158,11,0.5)] transform -rotate-2 cursor-pointer transition-all hover:scale-105"
                               onClick={() => rewardAtSlot && handleRedeemClick(rewardAtSlot)}
                             >
                               <Gift className="w-5 h-5 text-amber-200" />
@@ -791,10 +791,10 @@ export function TerminalPOS() {
                             <div 
                               key={i} 
                               title={`Sello ${stampNumber} registrado`}
-                              className="w-11 h-11 rounded-full flex flex-col items-center justify-center font-mono text-xs font-bold bg-[#3d2314] text-[#faedd9] border-2 border-[#5c3820] shadow-sm transform rotate-1 kraft-seal-stamped transition-all hover:rotate-0"
+                              className="w-11 h-11 rounded-full flex flex-col items-center justify-center font-mono text-xs font-bold bg-[#3d2314] dark:bg-[#2b1b11] text-[#faedd9] dark:text-[#fde68a] border-2 border-[#5c3820] dark:border-[#b45309]/70 shadow-sm dark:shadow-[0_0_10px_rgba(217,119,6,0.3)] kraft-seal-stamped transition-all hover:rotate-0"
                             >
-                              <Coffee className="w-5 h-5 text-[#f4d3ab]" />
-                              <span className="text-[8px] leading-tight font-mono text-[#e5caa3]">#{stampNumber}</span>
+                              <Coffee className="w-5 h-5 text-[#f4d3ab] dark:text-[#fde68a]" />
+                              <span className="text-[8px] leading-tight font-mono text-[#e5caa3] dark:text-[#fde68a]/80">#{stampNumber}</span>
                             </div>
                           );
                         }
@@ -804,9 +804,9 @@ export function TerminalPOS() {
                             <div 
                               key={i} 
                               title={`Próximo sello a estampar (${stampNumber})`}
-                              className="w-11 h-11 rounded-full flex flex-col items-center justify-center font-mono text-xs font-bold bg-[#fbf5eb] text-[#b45309] border-2 border-dashed border-[#b45309] shadow-inner animate-pulse transition-all"
+                              className="w-11 h-11 rounded-full flex flex-col items-center justify-center font-mono text-xs font-bold bg-[#fbf5eb] dark:bg-[#261d15] text-[#b45309] dark:text-[#f59e0b] border-2 border-dashed border-[#b45309] dark:border-[#f59e0b] shadow-inner animate-pulse transition-all"
                             >
-                              {isRewardSlot ? <Gift className="w-4 h-4 text-[#b45309]" /> : <Stamp className="w-4 h-4 text-[#b45309]" />}
+                              {isRewardSlot ? <Gift className="w-4 h-4 text-[#b45309] dark:text-[#f59e0b]" /> : <Stamp className="w-4 h-4 text-[#b45309] dark:text-[#f59e0b]" />}
                               <span className="text-[8px] leading-tight font-bold">#{stampNumber}</span>
                             </div>
                           );
@@ -819,8 +819,8 @@ export function TerminalPOS() {
                             title={isRewardSlot ? `Premio: ${rewardAtSlot?.name} (${stampNumber} sellos)` : `Sello ${stampNumber}`}
                             className={`w-11 h-11 rounded-full flex flex-col items-center justify-center font-mono text-xs font-medium transition-all ${
                               isRewardSlot
-                                ? 'bg-[#f4e8d3] border-2 border-dashed border-[#cbbca7] text-[#9c826b]'
-                                : 'bg-[#ede3cf] border border-dashed border-[#d8c8b4] text-[#a89782]'
+                                ? 'bg-[#f4e8d3] dark:bg-[#241c15] border-2 border-dashed border-[#cbbca7] dark:border-[#4d3d2f] text-[#9c826b] dark:text-[#a8907b]'
+                                : 'bg-[#ede3cf] dark:bg-[#1f1914] border border-dashed border-[#d8c8b4] dark:border-[#382d23] text-[#a89782] dark:text-[#6e5e50]'
                             }`}
                           >
                             {isRewardSlot ? <Gift className="w-4 h-4 opacity-70" /> : <Coffee className="w-3.5 h-3.5 opacity-40" />}
@@ -992,8 +992,8 @@ export function TerminalPOS() {
                   isPuntos ? (
                     <div className={`absolute right-4 top-1/2 -translate-y-1/2 inline-flex items-center gap-1 px-2.5 py-1 rounded-md font-mono text-[11px] font-bold ${
                       config.tierConfig.doublePointsEnabled && Number(ticketAmount) >= config.tierConfig.doublePointsMinSpend
-                        ? 'bg-[#064e3b] text-white shadow-xs'
-                        : 'bg-emerald-100 text-emerald-900 border border-emerald-300'
+                        ? 'bg-[#064e3b] dark:bg-[#059669] text-white shadow-xs'
+                        : 'bg-emerald-100 dark:bg-emerald-950/70 text-emerald-900 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800'
                     }`}>
                       {config.tierConfig.doublePointsEnabled && Number(ticketAmount) >= config.tierConfig.doublePointsMinSpend ? (
                         <>
@@ -1006,7 +1006,7 @@ export function TerminalPOS() {
                         </>
                       ) : (
                         <>
-                          <ArrowUpCircle className="w-3.5 h-3.5 text-emerald-700" />
+                          <ArrowUpCircle className="w-3.5 h-3.5 text-emerald-700 dark:text-emerald-400" />
                           <span>
                             +{((config.spendAmount || config.pointsPerArs || 100) > 0)
                               ? Math.floor((Number(ticketAmount) / (config.spendAmount || config.pointsPerArs || 100)) * (config.pointsAwarded ?? 1))
@@ -1018,8 +1018,8 @@ export function TerminalPOS() {
                   ) : (
                     <div className={`absolute right-4 top-1/2 -translate-y-1/2 inline-flex items-center gap-1 px-2.5 py-1 rounded-md font-mono text-[11px] font-bold ${
                       config.tierConfig.doubleStampEnabled && Number(ticketAmount) >= config.tierConfig.doubleStampMinSpend
-                        ? 'bg-[#b45309] text-white shadow-xs'
-                        : 'bg-amber-100 text-amber-900 border border-amber-300'
+                        ? 'bg-[#b45309] dark:bg-[#d97706] text-white shadow-xs'
+                        : 'bg-amber-100 dark:bg-amber-950/70 text-amber-900 dark:text-amber-300 border border-amber-300 dark:border-amber-800'
                     }`}>
                       {config.tierConfig.doubleStampEnabled && Number(ticketAmount) >= config.tierConfig.doubleStampMinSpend ? (
                         <>
@@ -1028,7 +1028,7 @@ export function TerminalPOS() {
                         </>
                       ) : (
                         <>
-                          <ArrowUpCircle className="w-3.5 h-3.5 text-amber-700" />
+                          <ArrowUpCircle className="w-3.5 h-3.5 text-amber-700 dark:text-amber-400" />
                           <span>+1 sello</span>
                         </>
                       )}
@@ -1040,7 +1040,7 @@ export function TerminalPOS() {
 
             {/* PREMIOS DISPONIBLES SEGÚN TIER */}
             {isRewardReady && (
-              <div className="bg-amber-50/70 border border-amber-200 rounded-xl p-4 md:p-5 flex flex-col gap-space-md shadow-xs animate-in fade-in slide-in-from-bottom-3">
+              <div className="bg-amber-50/70 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800/60 rounded-xl p-4 md:p-5 flex flex-col gap-space-md shadow-xs animate-in fade-in slide-in-from-bottom-3">
                 <div className="flex items-start gap-3">
                   <div className="w-10 h-10 rounded-xl bg-secondary text-on-secondary flex items-center justify-center flex-shrink-0 shadow-xs">
                     <Gift className="w-5 h-5 text-on-secondary" />
@@ -1062,16 +1062,16 @@ export function TerminalPOS() {
                         key={reward.id} 
                         type="button" 
                         onClick={() => handleRedeemClick(reward)} 
-                        className={`w-full bg-surface-container-lowest hover:bg-amber-100/60 hover:border-amber-400 border text-on-surface font-sans text-sm font-semibold px-4 py-3.5 rounded-xl shadow-xs flex items-center justify-between transition-colors active:scale-[0.99] group cursor-pointer ${
-                          isFromPreviousTier ? 'border-amber-400 bg-amber-50' : 'border-outline-variant/60'
+                        className={`w-full bg-surface-container-lowest hover:bg-amber-100/60 dark:hover:bg-amber-900/30 hover:border-amber-400 border text-on-surface font-sans text-sm font-semibold px-4 py-3.5 rounded-xl shadow-xs flex items-center justify-between transition-colors active:scale-[0.99] group cursor-pointer ${
+                          isFromPreviousTier ? 'border-amber-400 bg-amber-50 dark:bg-amber-950/40' : 'border-outline-variant/60'
                         }`}
                       >
                         <div className="flex items-center gap-2.5 truncate">
-                          <Gift className={`w-4.5 h-4.5 shrink-0 ${isFromPreviousTier ? 'text-amber-700' : 'text-secondary'}`} />
+                          <Gift className={`w-4.5 h-4.5 shrink-0 ${isFromPreviousTier ? 'text-amber-700 dark:text-amber-400' : 'text-secondary'}`} />
                           <div className="flex flex-col text-left truncate">
                             <span className="truncate font-bold text-on-surface">{reward.name}</span>
                             {isFromPreviousTier && (
-                              <span className="font-mono text-[10px] text-amber-800 font-bold">
+                              <span className="font-mono text-[10px] text-amber-800 dark:text-amber-300 font-bold">
                                 Guardado de Tarjeta {TIER_LABELS[reward.minTier || 'BRONZE']}
                               </span>
                             )}
@@ -1092,7 +1092,7 @@ export function TerminalPOS() {
                 </div>
 
                 {isSellos && (activeCustomer?.claimedRewards || []).length > 0 && (
-                  <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-amber-200/60 text-xs">
+                  <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-amber-200/60 dark:border-amber-800/40 text-xs">
                     <span className="font-sans text-xs font-semibold text-on-surface-variant flex items-center gap-1">
                       <CheckCircle2 className="w-3.5 h-3.5 text-secondary" />
                       Ya canjeados en esta tarjeta:
@@ -1150,7 +1150,7 @@ export function TerminalPOS() {
             disabled={(!activeCustomer && !isNewCustomer) || typeof ticketAmount !== 'number' || ticketAmount < 0}
             className={`w-full font-display text-lg font-bold py-4 px-6 rounded-xl shadow-md flex items-center justify-center gap-3 transition-all active:scale-[0.99] ${
               (activeCustomer || isNewCustomer) && typeof ticketAmount === 'number' && ticketAmount >= 0 
-                ? 'bg-[#064e3b] hover:bg-[#065f46] text-white shadow-emerald-950/20 cursor-pointer ring-1 ring-emerald-500/30' 
+                ? 'bg-[#064e3b] hover:bg-[#065f46] dark:bg-[#059669] dark:hover:bg-[#10b981] text-white shadow-emerald-950/20 dark:shadow-[0_0_22px_rgba(5,150,105,0.4)] cursor-pointer ring-1 ring-emerald-500/30' 
                 : 'bg-surface-container-high text-on-surface-variant/40 cursor-not-allowed shadow-none'
             }`}
           >
@@ -1168,7 +1168,7 @@ export function TerminalPOS() {
                 </span>
               )}
             </span>
-            <kbd className="font-mono text-xs px-2.5 py-1 rounded bg-black/25 text-white font-bold shadow-inner opacity-90 ml-auto border border-white/10">
+            <kbd className="font-mono text-xs px-2.5 py-1 rounded bg-black/25 dark:bg-black/50 text-white font-bold shadow-inner opacity-90 ml-auto border border-white/10 dark:border-white/20">
               Enter ↵
             </kbd>
           </button>
@@ -1177,10 +1177,10 @@ export function TerminalPOS() {
 
       {/* MODAL DE CONFIRMACIÓN DE CANJE */}
       {isRedeemModalOpen && selectedReward && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-          <div className="bg-surface-container-lowest rounded-2xl shadow-xl w-full max-w-md overflow-hidden flex flex-col animate-in zoom-in-95 duration-200 border border-outline-variant/60">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+          <div className="bg-surface-container-lowest rounded-2xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col animate-in zoom-in-95 duration-200 border border-outline-variant/60">
             <div className="p-6 flex flex-col gap-4">
-              <div className="w-12 h-12 rounded-full bg-amber-100 text-secondary flex items-center justify-center mx-auto mb-1 shadow-xs border border-amber-300">
+              <div className="w-12 h-12 rounded-full bg-amber-100 dark:bg-amber-950/60 text-secondary flex items-center justify-center mx-auto mb-1 shadow-xs border border-amber-300 dark:border-amber-700">
                 <Gift className="w-6 h-6" />
               </div>
               <h3 className="font-display text-2xl font-bold text-on-surface text-center">Confirmar Canje</h3>
@@ -1205,7 +1205,7 @@ export function TerminalPOS() {
               <button 
                 type="button"
                 onClick={handleConfirmRedeem}
-                className="px-5 py-2.5 rounded-xl font-sans font-semibold bg-[#b45309] hover:bg-[#92400e] text-white transition-colors shadow-xs flex items-center gap-2 cursor-pointer"
+                className="px-5 py-2.5 rounded-xl font-sans font-semibold bg-[#b45309] hover:bg-[#92400e] dark:bg-[#d97706] dark:hover:bg-[#b45309] text-white transition-colors shadow-xs flex items-center gap-2 cursor-pointer"
               >
                 Confirmar <kbd className="font-mono text-[10px] ml-1 px-1.5 py-0.5 bg-black/25 rounded">Enter ↵</kbd>
               </button>
@@ -1216,12 +1216,12 @@ export function TerminalPOS() {
 
       {/* MODAL PARA INGRESAR O ESCANEAR CÓDIGO QR / OTP */}
       {isTokenModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-          <div className="bg-surface-container-lowest rounded-2xl shadow-xl w-full max-w-md overflow-hidden flex flex-col animate-in zoom-in-95 duration-200 border border-outline-variant/60">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+          <div className="bg-surface-container-lowest rounded-2xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col animate-in zoom-in-95 duration-200 border border-outline-variant/60">
             <div className="p-6 flex flex-col gap-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2.5">
-                  <div className="w-10 h-10 rounded-xl bg-amber-100 text-secondary flex items-center justify-center border border-amber-200">
+                  <div className="w-10 h-10 rounded-xl bg-amber-100 dark:bg-amber-950/60 text-secondary flex items-center justify-center border border-amber-200 dark:border-amber-700">
                     <QrCode className="w-5 h-5" />
                   </div>
                   <div>
@@ -1239,11 +1239,11 @@ export function TerminalPOS() {
               </div>
 
               {activeCustomerPendingToken && (
-                <div className="p-3.5 rounded-xl bg-amber-50 border border-amber-300 flex items-center justify-between gap-2 shadow-xs">
+                <div className="p-3.5 rounded-xl bg-amber-50 dark:bg-amber-950/50 border border-amber-300 dark:border-amber-700 flex items-center justify-between gap-2 shadow-xs">
                   <div className="flex items-center gap-2.5">
                     <Gift className="w-5 h-5 text-secondary shrink-0" />
                     <div>
-                      <span className="text-[10px] uppercase font-bold text-amber-900">Canje detectado de la App</span>
+                      <span className="text-[10px] uppercase font-bold text-amber-900 dark:text-amber-300">Canje detectado de la App</span>
                       <p className="text-xs font-bold text-on-surface">
                         {activeCustomerPendingToken.reward_name}
                       </p>
@@ -1253,7 +1253,7 @@ export function TerminalPOS() {
                     type="button"
                     onClick={() => handleApproveToken(activeCustomerPendingToken)}
                     disabled={isValidatingToken}
-                    className="px-3.5 py-1.5 rounded-lg bg-[#b45309] hover:bg-[#92400e] text-white font-sans text-xs font-bold shrink-0 cursor-pointer shadow-xs"
+                    className="px-3.5 py-1.5 rounded-lg bg-[#b45309] hover:bg-[#92400e] dark:bg-[#d97706] text-white font-sans text-xs font-bold shrink-0 cursor-pointer shadow-xs"
                   >
                     Aprobar ({activeCustomerPendingToken.token_code})
                   </button>

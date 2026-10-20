@@ -201,9 +201,9 @@ export function CRM() {
           <div className="flex items-center gap-space-xs text-on-surface-variant font-mono text-[11px]">
             <span className="text-on-surface font-semibold">Auditoría Fiscal & Loyalty</span>
             <span className="text-outline">•</span>
-            <div className="flex items-center gap-space-xs px-3 py-1 rounded-full bg-emerald-50 border border-emerald-200/80">
-              <span className="w-2 h-2 rounded-full bg-emerald-600 animate-pulse"></span>
-              <span className="font-mono text-[11px] text-emerald-900 font-semibold tracking-wide">Auditoría en tiempo real activa</span>
+            <div className="flex items-center gap-space-xs px-3 py-1 rounded-full bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200/80 dark:border-emerald-800/60">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+              <span className="font-mono text-[11px] text-emerald-900 dark:text-emerald-300 font-semibold tracking-wide">Auditoría en tiempo real activa</span>
             </div>
           </div>
         </div>
@@ -330,18 +330,18 @@ export function CRM() {
             <div className="flex flex-col gap-1">
               <span className="font-mono text-[11px] font-medium uppercase tracking-wider text-outline">Distribución de Tiers</span>
               <div className="flex items-center gap-3 mt-1.5">
-                <div className="flex items-center gap-1 font-mono text-sm font-bold text-[#78350f]">
+                <div className="flex items-center gap-1 font-mono text-sm font-bold text-[#78350f] dark:text-[#fed7aa]">
                   <span>🥉</span> {tierDistribution.BRONZE}
                 </div>
-                <div className="flex items-center gap-1 font-mono text-sm font-bold text-[#334155]">
+                <div className="flex items-center gap-1 font-mono text-sm font-bold text-[#334155] dark:text-[#cbd5e1]">
                   <span>🥈</span> {tierDistribution.SILVER}
                 </div>
-                <div className="flex items-center gap-1 font-mono text-sm font-bold text-[#92400e]">
+                <div className="flex items-center gap-1 font-mono text-sm font-bold text-[#92400e] dark:text-[#fde68a]">
                   <span>🥇</span> {tierDistribution.GOLD}
                 </div>
               </div>
             </div>
-            <div className="w-11 h-11 rounded-xl bg-amber-50 text-secondary flex items-center justify-center border border-amber-200/60 shadow-xs">
+            <div className="w-11 h-11 rounded-xl bg-amber-50 dark:bg-amber-950/60 text-secondary flex items-center justify-center border border-amber-200/60 dark:border-amber-800/60 shadow-xs">
               <Crown className="w-5 h-5" />
             </div>
           </div>
@@ -565,14 +565,14 @@ export function CRM() {
                           <div className="flex flex-col gap-1 items-start">
                             <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full font-mono text-[11px] font-bold border ${
                               c.tier === 'GOLD' 
-                                ? 'bg-[#fef3c7] text-[#92400e] border-[#f59e0b]/50 shadow-[0_0_8px_rgba(245,158,11,0.2)]' 
+                                ? 'bg-[#fef3c7] dark:bg-[#451a03] text-[#92400e] dark:text-[#fde68a] border-[#f59e0b]/50 dark:border-[#d97706]/70 shadow-[0_0_8px_rgba(245,158,11,0.2)]' 
                                 : c.tier === 'SILVER' 
-                                ? 'bg-[#f1f3f5] text-[#334155] border-[#94a3b8]/60' 
-                                : 'bg-[#f5e6d3] text-[#78350f] border-[#d97706]/40'
+                                ? 'bg-[#f1f3f5] dark:bg-[#1e293b] text-[#334155] dark:text-[#cbd5e1] border-[#94a3b8]/60 dark:border-[#475569]' 
+                                : 'bg-[#f5e6d3] dark:bg-[#2e1d13] text-[#78350f] dark:text-[#fed7aa] border-[#d97706]/40 dark:border-[#9a3412]/50'
                             }`}>
-                              {c.tier === 'GOLD' && <Crown className="w-3.5 h-3.5 text-amber-600 fill-amber-500" />}
-                              {c.tier === 'SILVER' && <Star className="w-3.5 h-3.5 text-slate-600 fill-slate-400" />}
-                              {c.tier === 'BRONZE' && <Shield className="w-3.5 h-3.5 text-amber-800" />}
+                              {c.tier === 'GOLD' && <Crown className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 fill-amber-500" />}
+                              {c.tier === 'SILVER' && <Star className="w-3.5 h-3.5 text-slate-600 dark:text-slate-300 fill-slate-400" />}
+                              {c.tier === 'BRONZE' && <Shield className="w-3.5 h-3.5 text-amber-800 dark:text-amber-400" />}
                               {c.tier === 'GOLD' ? 'ORO VIP' : c.tier === 'SILVER' ? 'PLATA' : 'BRONZE'}
                             </span>
 
@@ -717,7 +717,7 @@ export function CRM() {
                     onClick={() => setPromotionTier('BRONZE')}
                     className={`p-3 rounded-xl text-center font-sans text-xs font-bold transition-all border flex flex-col items-center gap-1 cursor-pointer ${
                       promotionTier === 'BRONZE'
-                        ? 'bg-[#f5e6d3] text-[#78350f] border-[#d97706]/70 shadow-xs'
+                        ? 'bg-[#f5e6d3] dark:bg-[#2e1d13] text-[#78350f] dark:text-[#fed7aa] border-[#d97706]/70 dark:border-[#9a3412] shadow-xs'
                         : 'bg-surface-container-low text-on-surface-variant border-transparent hover:bg-surface-container'
                     }`}
                   >
@@ -731,7 +731,7 @@ export function CRM() {
                     onClick={() => setPromotionTier('SILVER')}
                     className={`p-3 rounded-xl text-center font-sans text-xs font-bold transition-all border flex flex-col items-center gap-1 cursor-pointer ${
                       promotionTier === 'SILVER'
-                        ? 'bg-[#f1f3f5] text-[#334155] border-[#94a3b8]/70 shadow-xs'
+                        ? 'bg-[#f1f3f5] dark:bg-[#1e293b] text-[#334155] dark:text-[#cbd5e1] border-[#94a3b8]/70 dark:border-[#475569] shadow-xs'
                         : 'bg-surface-container-low text-on-surface-variant border-transparent hover:bg-surface-container'
                     }`}
                   >
@@ -745,7 +745,7 @@ export function CRM() {
                     onClick={() => setPromotionTier('GOLD')}
                     className={`p-3 rounded-xl text-center font-sans text-xs font-bold transition-all border flex flex-col items-center gap-1 cursor-pointer ${
                       promotionTier === 'GOLD'
-                        ? 'bg-[#fef3c7] text-[#92400e] border-[#f59e0b]/70 shadow-xs'
+                        ? 'bg-[#fef3c7] dark:bg-[#451a03] text-[#92400e] dark:text-[#fde68a] border-[#f59e0b]/70 dark:border-[#d97706] shadow-xs'
                         : 'bg-surface-container-low text-on-surface-variant border-transparent hover:bg-surface-container'
                     }`}
                   >

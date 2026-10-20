@@ -220,8 +220,11 @@ interface LoyaltyState {
   customers: Customer[];
   transactions: Transaction[];
   isLoadingData: boolean;
+  isDarkMode: boolean;
 
   // Acciones
+  toggleDarkMode: () => void;
+  setDarkMode: (enabled: boolean) => void;
   fetchInitialData: (workspaceId: string) => Promise<void>;
   saveConfigToDb: () => Promise<boolean>;
   setConfig: (config: Partial<ProgramConfig>) => void;
@@ -257,6 +260,17 @@ const DEFAULT_TIER_CONFIG: TierConfig = {
   inactivityDaysDowngrade: 45,
 };
 
+const getInitialTheme = (): boolean => {
+  if (typeof window === 'undefined') return false;
+  const stored = localStorage.getItem('loyalty_pos_theme');
+  if (stored) {
+    const isDark = stored === 'dark';
+    document.documentElement.classList.toggle('dark', isDark);
+    return isDark;
+  }
+  return false;
+};
+
 export const useLoyaltyStore = create<LoyaltyState>((set, get) => ({
   config: {
     type: 'puntos',
@@ -271,6 +285,24 @@ export const useLoyaltyStore = create<LoyaltyState>((set, get) => ({
   customers: [],
   transactions: [],
   isLoadingData: false,
+  isDarkMode: getInitialTheme(),
+
+  toggleDarkMode: () => {
+    const next = !get().isDarkMode;
+    if (typeof window !== 'undefined') {
+      document.documentElement.classList.toggle('dark', next);
+      localStorage.setItem('loyalty_pos_theme', next ? 'dark' : 'light');
+    }
+    set({ isDarkMode: next });
+  },
+
+  setDarkMode: (enabled: boolean) => {
+    if (typeof window !== 'undefined') {
+      document.documentElement.classList.toggle('dark', enabled);
+      localStorage.setItem('loyalty_pos_theme', enabled ? 'dark' : 'light');
+    }
+    set({ isDarkMode: enabled });
+  },
 
   fetchInitialData: async (workspaceId: string) => {
     if (!workspaceId) return;

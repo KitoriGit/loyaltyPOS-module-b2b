@@ -6,12 +6,14 @@ import {
   Users,
   BarChart3,
   Moon,
+  Sun,
   LogOut,
   Store,
   Building2,
   UserCheck
 } from 'lucide-react';
 import { useAuthStore } from '../store/useAuthStore';
+import { useLoyaltyStore } from '../store/useLoyaltyStore';
 
 interface LayoutProps {
   children: ReactNode;
@@ -19,6 +21,8 @@ interface LayoutProps {
 
 export function Layout({ children }: LayoutProps) {
   const { tenantName, currentBranch, branches, user, userType, signOut, setCurrentBranch } = useAuthStore();
+  const isDarkMode = useLoyaltyStore((state) => state.isDarkMode);
+  const toggleDarkMode = useLoyaltyStore((state) => state.toggleDarkMode);
 
   const getNavClasses = ({ isActive }: { isActive: boolean }) =>
     `group flex items-center justify-between px-space-md py-space-sm rounded-xl transition-all ${isActive
@@ -46,9 +50,9 @@ export function Layout({ children }: LayoutProps) {
                 </span>
               </div>
             </div>
-            <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-emerald-50 border border-emerald-200/60">
-              <span className="w-2 h-2 rounded-full bg-emerald-600 animate-pulse"></span>
-              <span className="font-mono text-[11px] text-emerald-800 font-semibold">Online</span>
+            <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/30">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+              <span className="font-mono text-[11px] text-emerald-700 dark:text-emerald-400 font-semibold">Online</span>
             </div>
           </div>
 
@@ -83,7 +87,7 @@ export function Layout({ children }: LayoutProps) {
           </div>
         </div>
 
-        {/* Footer del Sidebar con info de usuario y logout */}
+        {/* Footer del Sidebar con info de usuario, theme toggle y logout */}
         <div className="p-space-md flex flex-col gap-space-sm border-t border-outline-variant/50">
           {/* Card de Usuario Activo */}
           <div className="px-3 py-2 rounded-xl bg-surface-container-low border border-outline-variant/40 flex items-center gap-2.5">
@@ -103,17 +107,27 @@ export function Layout({ children }: LayoutProps) {
           <div className="flex flex-col gap-space-xs">
             <button
               type="button"
-              className="w-full flex items-center justify-between px-space-md py-2.5 rounded-xl bg-surface-container-low hover:bg-surface-container text-on-surface transition-colors"
+              onClick={toggleDarkMode}
+              className="w-full flex items-center justify-between px-space-md py-2.5 rounded-xl bg-surface-container-low hover:bg-surface-container text-on-surface transition-colors cursor-pointer border border-outline-variant/40"
             >
               <div className="flex items-center gap-space-sm">
-                <Moon className="w-4 h-4 text-on-surface-variant" />
-                <span className="font-sans text-xs font-medium">Modo Nocturno</span>
+                {isDarkMode ? (
+                  <Sun className="w-4 h-4 text-amber-400 fill-amber-400/20" />
+                ) : (
+                  <Moon className="w-4 h-4 text-on-surface-variant" />
+                )}
+                <span className="font-sans text-xs font-medium">
+                  {isDarkMode ? 'Modo Día (Claro)' : 'Modo Noche (Oscuro)'}
+                </span>
               </div>
+              <span className="font-mono text-[10px] px-1.5 py-0.5 rounded bg-surface-container font-bold text-on-surface-variant">
+                {isDarkMode ? 'ON' : 'OFF'}
+              </span>
             </button>
             <button
               type="button"
               onClick={() => signOut()}
-              className="w-full flex items-center justify-between px-space-md py-2.5 rounded-xl text-on-surface-variant hover:bg-error-container hover:text-on-error-container transition-colors group"
+              className="w-full flex items-center justify-between px-space-md py-2.5 rounded-xl text-on-surface-variant hover:bg-error-container hover:text-on-error-container transition-colors group cursor-pointer"
             >
               <div className="flex items-center gap-space-sm">
                 <LogOut className="w-4 h-4 transition-colors group-hover:text-on-error-container" />
@@ -136,6 +150,26 @@ export function Layout({ children }: LayoutProps) {
             </div>
           </div>
           <div className="flex items-center gap-space-md">
+            {/* Theme Toggle Sun / Moon Tactile Button in Header */}
+            <button
+              type="button"
+              onClick={toggleDarkMode}
+              title={isDarkMode ? 'Cambiar a Modo Día (Luz)' : 'Cambiar a Modo Noche (Espresso Vault)'}
+              className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-surface-container-low hover:bg-surface-container border border-outline-variant/60 text-on-surface transition-all cursor-pointer shadow-xs active:scale-95"
+            >
+              {isDarkMode ? (
+                <>
+                  <Sun className="w-4 h-4 text-amber-400 fill-amber-400/30" />
+                  <span className="font-sans text-xs font-semibold hidden sm:inline">Modo Día</span>
+                </>
+              ) : (
+                <>
+                  <Moon className="w-4 h-4 text-secondary" />
+                  <span className="font-sans text-xs font-semibold hidden sm:inline">Modo Noche</span>
+                </>
+              )}
+            </button>
+
             {branches.length > 1 ? (
               <div className="flex items-center gap-2">
                 <Store className="w-4 h-4 text-on-surface-variant" />

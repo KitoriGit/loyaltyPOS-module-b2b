@@ -2,7 +2,7 @@
 @import "tailwindcss";
 
 @theme {
-  /* Warm Specialty Craft Terminal Theme */
+  /* Warm Specialty Craft Terminal Theme (Light / Daytime Shift) */
   --color-primary: #064e3b; /* Deep forest espresso for primary actions / checkout */
   --color-primary-container: #065f46;
   --color-on-primary: #ffffff;
@@ -93,9 +93,73 @@ body {
   min-height: 100vh;
   background-color: var(--color-background);
   color: var(--color-on-background);
+  transition: background-color 0.25s ease, color 0.25s ease;
 }
 
-/* Warm Craft Custom Effects */
+/* =========================================================================
+   DARK MODE: "Warm Specialty Craft Dark / Espresso Vault"
+   Low-light cashier terminal for night shifts, craft breweries, and cafes.
+   ========================================================================= */
+html.dark,
+.dark {
+  /* Canvas / Background: Deep roasted coffee bean black */
+  --color-background: #12100e;
+  --color-on-background: #f5ede4;
+
+  /* Cards & Containers: Dark warm slate (#1c1815 / #221d19) with subtle warm borders (#2f2822) */
+  --color-surface: #12100e;
+  --color-surface-dim: #0d0b0a;
+  --color-surface-bright: #26201b;
+  --color-surface-container-lowest: #1c1815;
+  --color-surface-container-low: #221d19;
+  --color-surface-container: #2a231e;
+  --color-surface-container-high: #322b25;
+  --color-surface-container-highest: #3d352e;
+
+  /* Text: Warm bone white (#f5ede4) for headings/labels, warm muted coffee (#a3988c) for secondary text */
+  --color-on-surface: #f5ede4;
+  --color-on-surface-variant: #a3988c;
+  --color-outline: #786c60;
+  --color-outline-variant: #2f2822;
+
+  /* Checkout: High-visibility emerald forest glow (#059669 / #10b981) */
+  --color-primary: #059669;
+  --color-primary-container: #047857;
+  --color-on-primary: #ffffff;
+  --color-on-primary-container: #ecfdf5;
+  --color-primary-fixed: #064e3b;
+  --color-on-primary-fixed: #a7f3d0;
+  --color-primary-fixed-variant: #10b981;
+
+  /* Rewards: Glowing cinnamon / toasted amber (#b45309 / #d97706) */
+  --color-secondary: #d97706;
+  --color-secondary-container: #451a03;
+  --color-on-secondary: #ffffff;
+  --color-on-secondary-container: #fef3c7;
+
+  --color-tertiary: #b45309;
+  --color-tertiary-container: #78350f;
+  --color-on-tertiary: #ffffff;
+  --color-on-tertiary-container: #fef3c7;
+
+  /* Error state */
+  --color-error: #ef4444;
+  --color-error-container: #450a0a;
+  --color-on-error: #ffffff;
+  --color-on-error-container: #fecaca;
+
+  /* Specialty Kraft & Artisan Dark */
+  --color-kraft: #1e1915;
+  --color-kraft-border: #3d3228;
+  --color-kraft-ink: #fef3c7;
+  --color-cinnamon: #d97706;
+  --color-cinnamon-hover: #b45309;
+  --color-forest: #059669;
+  --color-forest-hover: #10b981;
+  --color-espresso: #12100e;
+}
+
+/* Warm Craft Custom Effects - Light */
 .kraft-cardboard {
   background-color: #f7f1e5;
   background-image: radial-gradient(#d6c7b2 0.8px, transparent 0.8px);
@@ -120,6 +184,34 @@ body {
   animation: warmPulse 2.2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
 
+/* Warm Craft Custom Effects - Dark */
+html.dark .kraft-cardboard,
+.dark .kraft-cardboard {
+  background-color: #1e1915;
+  background-image: radial-gradient(#3a3027 1px, transparent 1px);
+  background-size: 14px 14px;
+  border-color: #3d3228 !important;
+}
+
+html.dark .kraft-seal-stamped,
+.dark .kraft-seal-stamped {
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.5), inset 0 1px 2px rgba(255, 255, 255, 0.12);
+}
+
+@keyframes warmPulseDark {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(217, 119, 6, 0.65), 0 2px 14px rgba(217, 119, 6, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 0 8px rgba(217, 119, 6, 0), 0 2px 22px rgba(217, 119, 6, 0.7);
+  }
+}
+
+html.dark .warm-pulse-reward,
+.dark .warm-pulse-reward {
+  animation: warmPulseDark 2.2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
 /* Scrollbars suited for warm artisan aesthetic */
 ::-webkit-scrollbar {
   width: 7px;
@@ -134,4 +226,17 @@ body {
 }
 ::-webkit-scrollbar-thumb:hover {
   background: #b8ac9b;
+}
+
+html.dark ::-webkit-scrollbar-track,
+.dark ::-webkit-scrollbar-track {
+  background: #181411;
+}
+html.dark ::-webkit-scrollbar-thumb,
+.dark ::-webkit-scrollbar-thumb {
+  background: #383028;
+}
+html.dark ::-webkit-scrollbar-thumb:hover,
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: #4d4237;
 }
