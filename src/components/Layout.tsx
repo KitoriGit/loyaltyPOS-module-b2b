@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { NavLink } from 'react-router-dom';
 import {
   Coffee,
@@ -10,19 +10,22 @@ import {
   LogOut,
   Store,
   Building2,
-  UserCheck
+  UserCheck,
+  QrCode
 } from 'lucide-react';
 import { useAuthStore } from '../store/useAuthStore';
 import { useLoyaltyStore } from '../store/useLoyaltyStore';
+import { StorefrontQrModal } from './StorefrontQrModal';
 
 interface LayoutProps {
   children: ReactNode;
 }
 
 export function Layout({ children }: LayoutProps) {
-  const { tenantName, currentBranch, branches, user, userType, signOut, setCurrentBranch } = useAuthStore();
+  const { tenantName, currentBranch, branches, user, userType, workspaceId, signOut, setCurrentBranch } = useAuthStore();
   const isDarkMode = useLoyaltyStore((state) => state.isDarkMode);
   const toggleDarkMode = useLoyaltyStore((state) => state.toggleDarkMode);
+  const [isQrModalOpen, setIsQrModalOpen] = useState(false);
 
   const getNavClasses = ({ isActive }: { isActive: boolean }) =>
     `group flex items-center justify-between px-space-md py-space-sm rounded-xl transition-all ${isActive
@@ -83,6 +86,23 @@ export function Layout({ children }: LayoutProps) {
                   <span className="font-sans text-sm">Dashboard de Estadísticas</span>
                 </div>
               </NavLink>
+
+              {/* Botón Destacado: Cartel QR Mostrador */}
+              <div className="pt-2 mt-1 border-t border-outline-variant/30">
+                <button
+                  type="button"
+                  onClick={() => setIsQrModalOpen(true)}
+                  className="w-full flex items-center justify-between px-space-md py-2.5 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-800 dark:text-amber-300 border border-amber-500/30 transition-all font-semibold text-xs cursor-pointer group shadow-2xs"
+                >
+                  <div className="flex items-center gap-2">
+                    <QrCode className="w-4 h-4 text-amber-600 dark:text-amber-400 group-hover:scale-110 transition-transform" />
+                    <span>Cartel QR Mostrador</span>
+                  </div>
+                  <span className="px-1.5 py-0.5 rounded bg-amber-500/20 text-[10px] uppercase font-mono font-bold">
+                    Imprimir
+                  </span>
+                </button>
+              </div>
             </nav>
           </div>
         </div>
@@ -150,6 +170,16 @@ export function Layout({ children }: LayoutProps) {
             </div>
           </div>
           <div className="flex items-center gap-space-md">
+            {/* Botón QR en Header para acceso rápido */}
+            <button
+              type="button"
+              onClick={() => setIsQrModalOpen(true)}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-surface-container-low hover:bg-surface-container border border-outline-variant/60 text-xs font-semibold text-on-surface transition-all shadow-xs cursor-pointer active:scale-95"
+            >
+              <QrCode className="w-4 h-4 text-primary" />
+              <span className="hidden sm:inline">QR Clientes</span>
+            </button>
+
             {/* Theme Toggle Sun / Moon Tactile Button in Header */}
             <button
               type="button"
@@ -203,6 +233,14 @@ export function Layout({ children }: LayoutProps) {
           {children}
         </main>
       </div>
+
+      {/* Modal de Cartel QR de Mostrador */}
+      <StorefrontQrModal
+        isOpen={isQrModalOpen}
+        onClose={() => setIsQrModalOpen(false)}
+        workspaceId={workspaceId || ''}
+        tenantName={tenantName || 'Nuestro Comercio'}
+      />
     </div>
   );
 }

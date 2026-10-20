@@ -9,6 +9,7 @@ import { CRM } from './screens/CRM';
 import { Dashboard } from './screens/Dashboard';
 import { Login } from './screens/Login';
 import { Register } from './screens/Register';
+import { ModuleGatekeeper } from './components/ModuleGatekeeper';
 import { useAuthStore } from './store/useAuthStore';
 import { useLoyaltyStore } from './store/useLoyaltyStore';
 
@@ -54,17 +55,19 @@ function App() {
           <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>
       ) : (
-        <Layout>
-          <Routes>
-            <Route path="/" element={<TerminalPOS />} />
-            <Route path="/config" element={<ProgramConfig />} />
-            <Route path="/crm" element={<CRM />} />
-            <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/login" element={<Navigate to="/" replace />} />
-            <Route path="/register" element={<Navigate to="/" replace />} />
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
-        </Layout>
+        <ModuleGatekeeper>
+          <Layout>
+            <Routes>
+              <Route path="/" element={<TerminalPOS />} />
+              <Route path="/config" element={<ProgramConfig />} />
+              <Route path="/crm" element={<CRM />} />
+              <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/login" element={<Navigate to="/" replace />} />
+              <Route path="/register" element={<Navigate to="/" replace />} />
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+          </Layout>
+        </ModuleGatekeeper>
       )}
     </BrowserRouter>
   );
