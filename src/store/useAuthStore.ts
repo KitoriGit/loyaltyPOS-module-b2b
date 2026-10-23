@@ -18,6 +18,9 @@ interface AuthState {
   employeeId: string | null;
   tenantName: string | null;
   enabledModules: string[];
+  subscriptionStatus: string;
+  subscriptionTier: string;
+  trialEndsAt: string | null;
   branches: Branch[];
   currentBranch: Branch | null;
   isLoading: boolean;
@@ -43,7 +46,7 @@ export async function fetchSessionContext(user: User) {
     // Obtener nombre del workspace y modulos contratados
     const { data: ws } = await supabase
       .from('workspaces')
-      .select('name, enabled_modules')
+      .select('name, enabled_modules, subscription_status, subscription_tier, trial_ends_at')
       .eq('id', employeeData.workspace_id)
       .maybeSingle();
 
@@ -52,7 +55,10 @@ export async function fetchSessionContext(user: User) {
       workspaceId: employeeData.workspace_id,
       employeeId: employeeData.id,
       tenantName: ws?.name || 'Comercio',
-      enabledModules: ws?.enabled_modules || ['loyalty', 'booking', 'shiftsync'],
+      enabledModules: ws?.enabled_modules ?? ['loyalty', 'booking', 'shiftsync'],
+      subscriptionStatus: ws?.subscription_status || 'active',
+      subscriptionTier: ws?.subscription_tier || 'trial',
+      trialEndsAt: ws?.trial_ends_at || null,
     };
   }
 
@@ -61,7 +67,7 @@ export async function fetchSessionContext(user: User) {
   while (attempts < 5) {
     const { data: workspaces, error } = await supabase
       .from('workspaces')
-      .select('id, name, enabled_modules')
+      .select('id, name, enabled_modules, subscription_status, subscription_tier, trial_ends_at')
       .eq('user_id', user.id);
 
     if (error) {
@@ -74,7 +80,10 @@ export async function fetchSessionContext(user: User) {
         workspaceId: workspaces[0].id,
         employeeId: null,
         tenantName: workspaces[0].name,
-        enabledModules: workspaces[0].enabled_modules || ['loyalty', 'booking', 'shiftsync'],
+        enabledModules: workspaces[0].enabled_modules ?? ['loyalty', 'booking', 'shiftsync'],
+        subscriptionStatus: workspaces[0].subscription_status || 'active',
+        subscriptionTier: workspaces[0].subscription_tier || 'trial',
+        trialEndsAt: workspaces[0].trial_ends_at || null,
       };
     }
     await new Promise((res) => setTimeout(res, 500));
@@ -96,6 +105,9 @@ export async function fetchSessionContext(user: User) {
         employeeId: null,
         tenantName: newWs.name,
         enabledModules: ['loyalty', 'booking', 'shiftsync'],
+        subscriptionStatus: 'active',
+        subscriptionTier: 'trial',
+        trialEndsAt: null,
       };
     }
   } catch (err) {
@@ -108,6 +120,9 @@ export async function fetchSessionContext(user: User) {
     employeeId: null,
     tenantName: null,
     enabledModules: [],
+    subscriptionStatus: 'active',
+    subscriptionTier: 'trial',
+    trialEndsAt: null,
   };
 }
 
@@ -119,6 +134,9 @@ export const useAuthStore = create<AuthState>((set) => ({
   employeeId: null,
   tenantName: null,
   enabledModules: [],
+  subscriptionStatus: 'active',
+  subscriptionTier: 'trial',
+  trialEndsAt: null,
   branches: [],
   currentBranch: null,
   isLoading: true,
@@ -150,6 +168,9 @@ export const useAuthStore = create<AuthState>((set) => ({
           employeeId: ctx.employeeId,
           tenantName: ctx.tenantName,
           enabledModules: ctx.enabledModules,
+          subscriptionStatus: ctx.subscriptionStatus,
+          subscriptionTier: ctx.subscriptionTier,
+          trialEndsAt: ctx.trialEndsAt,
           branches,
           currentBranch: branches.length > 0 ? branches[0] : null,
           isLoading: false,
@@ -180,6 +201,9 @@ export const useAuthStore = create<AuthState>((set) => ({
               employeeId: ctx.employeeId,
               tenantName: ctx.tenantName,
               enabledModules: ctx.enabledModules,
+              subscriptionStatus: ctx.subscriptionStatus,
+              subscriptionTier: ctx.subscriptionTier,
+              trialEndsAt: ctx.trialEndsAt,
               branches,
               currentBranch: branches.length > 0 ? branches[0] : null,
               isLoading: false,
@@ -192,6 +216,10 @@ export const useAuthStore = create<AuthState>((set) => ({
               workspaceId: null,
               employeeId: null,
               tenantName: null,
+              enabledModules: [],
+              subscriptionStatus: 'active',
+              subscriptionTier: 'trial',
+              trialEndsAt: null,
               branches: [],
               currentBranch: null,
               isLoading: false,
@@ -231,6 +259,10 @@ export const useAuthStore = create<AuthState>((set) => ({
         workspaceId: ctx.workspaceId,
         employeeId: ctx.employeeId,
         tenantName: ctx.tenantName,
+        enabledModules: ctx.enabledModules,
+        subscriptionStatus: ctx.subscriptionStatus,
+        subscriptionTier: ctx.subscriptionTier,
+        trialEndsAt: ctx.trialEndsAt,
         branches,
         currentBranch: branches.length > 0 ? branches[0] : null,
       });
@@ -265,6 +297,10 @@ export const useAuthStore = create<AuthState>((set) => ({
         workspaceId: ctx.workspaceId,
         employeeId: ctx.employeeId,
         tenantName: ctx.tenantName,
+        enabledModules: ctx.enabledModules,
+        subscriptionStatus: ctx.subscriptionStatus,
+        subscriptionTier: ctx.subscriptionTier,
+        trialEndsAt: ctx.trialEndsAt,
         branches,
         currentBranch: branches.length > 0 ? branches[0] : null,
       });
@@ -282,6 +318,10 @@ export const useAuthStore = create<AuthState>((set) => ({
       workspaceId: null,
       employeeId: null,
       tenantName: null,
+      enabledModules: [],
+      subscriptionStatus: 'active',
+      subscriptionTier: 'trial',
+      trialEndsAt: null,
       branches: [],
       currentBranch: null,
     });
