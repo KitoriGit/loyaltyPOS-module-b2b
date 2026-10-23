@@ -12,6 +12,7 @@ import { Register } from './screens/Register';
 import { ModuleGatekeeper } from './components/ModuleGatekeeper';
 import { useAuthStore } from './store/useAuthStore';
 import { useLoyaltyStore } from './store/useLoyaltyStore';
+import { supabase } from './lib/supabase';
 
 function App() {
   const { session, user, isLoading, initialize, workspaceId } = useAuthStore();
@@ -29,6 +30,39 @@ function App() {
   useEffect(() => {
     if (workspaceId) {
       fetchInitialData(workspaceId);
+
+      // Suscripción Realtime para sincronizar interacciones desde otros módulos (ej: Booking)
+      const channel = supabase
+        .channel(`loyalty_pos_sync_${workspaceId}`)
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'loyalty_transactions',
+            filter: `workspace_id=eq.${workspaceId}`,
+          },
+          () => {
+            fetchInitialData(workspaceId);
+          }
+        )
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'loyalty_customers',
+            filter: `workspace_id=eq.${workspaceId}`,
+          },
+          () => {
+            fetchInitialData(workspaceId);
+          }
+        )
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
     }
   }, [workspaceId, fetchInitialData]);
 
