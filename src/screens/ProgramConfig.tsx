@@ -69,7 +69,7 @@ export function ProgramConfig() {
     setDemoLoading('barberia');
     try {
       await seedBarberiaPointsDemo(workspaceId);
-      toast.success('Demo Barbería / Estética (Puntos) cargada con éxito');
+      toast.success('Demo Barbería / Estética (Sellos) cargada con éxito');
     } catch (err: any) {
       console.error(err);
       toast.error('Error al cargar demo: ' + (err.message || ''));
@@ -86,7 +86,7 @@ export function ProgramConfig() {
     setDemoLoading('cafeteria');
     try {
       await seedCafeteriaStampsDemo(workspaceId);
-      toast.success('Demo Cafetería / Gastronomía (Sellos) cargada con éxito');
+      toast.success('Demo Cafetería / Gastronomía (Puntos) cargada con éxito');
     } catch (err: any) {
       console.error(err);
       toast.error('Error al cargar demo: ' + (err.message || ''));
@@ -821,16 +821,16 @@ export function ProgramConfig() {
                   <Scissors className="w-5 h-5" />
                 )}
               </div>
-              <span className="px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-900 dark:bg-emerald-950/60 dark:text-emerald-300 font-mono text-[10px] font-bold border border-emerald-300 dark:border-emerald-800">
-                Modo Puntos
+              <span className="px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-900 dark:bg-emerald-950/60 dark:text-emerald-300 font-mono text-[10px] font-bold border border-emerald-300 dark:border-emerald-800">Modo Sellos (8)
+
               </span>
             </div>
             <div>
               <span className="font-display text-sm font-bold text-on-surface block group-hover:text-primary transition-colors">
-                Cargar Demo: Barbería / Peluquería & Estética (Puntos)
+                Cargar Demo: Barbería / Peluquería & Estética (Sellos)
               </span>
               <span className="font-sans text-xs text-on-surface-variant mt-1 block leading-relaxed">
-                Configura 1 pto cada $100, premios de corte/barba/estética, 6 clientes activos (ej. DNI 38451290) y 12 transacciones.
+                Tarjeta de 8 sellos, premios de corte/barba/estética y clientes con 8/8 sellos listos para canjear en vivo (DNI 38451290).
               </span>
             </div>
           </button>
@@ -850,16 +850,16 @@ export function ProgramConfig() {
                   <Coffee className="w-5 h-5" />
                 )}
               </div>
-              <span className="px-2 py-0.5 rounded-md bg-amber-100 text-amber-900 dark:bg-amber-950/60 dark:text-amber-300 font-mono text-[10px] font-bold border border-amber-300 dark:border-amber-800">
-                Modo Sellos (8)
+              <span className="px-2 py-0.5 rounded-md bg-amber-100 text-amber-900 dark:bg-amber-950/60 dark:text-amber-300 font-mono text-[10px] font-bold border border-amber-300 dark:border-amber-800">Modo Puntos
+
               </span>
             </div>
             <div>
               <span className="font-display text-sm font-bold text-on-surface block group-hover:text-secondary transition-colors">
-                Cargar Demo: Cafetería / Gastronomía (Sellos)
+                Cargar Demo: Cafetería / Gastronomía (Puntos)
               </span>
               <span className="font-sans text-xs text-on-surface-variant mt-1 block leading-relaxed">
-                Tarjeta artesanal de 8 sellos, Café + Medialuna gratis, clientes con 8/8 sellos listos para canjear en vivo (DNI 38451290).
+                Configura 1 pto cada $100, premios de café/pastelería, 6 clientes con puntos activos (ej. DNI 38451290) y 12 transacciones.
               </span>
             </div>
           </button>
