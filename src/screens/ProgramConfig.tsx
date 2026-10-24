@@ -18,9 +18,15 @@ import {
   Crown,
   Zap,
   CalendarClock,
-  Gift
+  Gift,
+  Sparkles,
+  Scissors,
+  Loader2,
+  RotateCcw
 } from 'lucide-react';
 import { useLoyaltyStore, type Reward, type TierType, getTierMaxStamps } from '../store/useLoyaltyStore';
+import { useAuthStore } from '../store/useAuthStore';
+import { seedBarberiaPointsDemo, seedCafeteriaStampsDemo, clearWorkspaceLoyaltyData } from '../lib/demoSeeder';
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import toast from 'react-hot-toast';
 
@@ -52,6 +58,59 @@ export function ProgramConfig() {
   });
 
   const saveConfigToDb = useLoyaltyStore((state) => state.saveConfigToDb);
+  const workspaceId = useAuthStore((state) => state.workspaceId);
+  const [demoLoading, setDemoLoading] = useState<'barberia' | 'cafeteria' | 'clear' | null>(null);
+
+  const handleLoadBarberiaDemo = async () => {
+    if (!workspaceId) {
+      toast.error('No se detectó un Workspace activo');
+      return;
+    }
+    setDemoLoading('barberia');
+    try {
+      await seedBarberiaPointsDemo(workspaceId);
+      toast.success('Demo Barbería / Estética (Puntos) cargada con éxito');
+    } catch (err: any) {
+      console.error(err);
+      toast.error('Error al cargar demo: ' + (err.message || ''));
+    } finally {
+      setDemoLoading(null);
+    }
+  };
+
+  const handleLoadCafeteriaDemo = async () => {
+    if (!workspaceId) {
+      toast.error('No se detectó un Workspace activo');
+      return;
+    }
+    setDemoLoading('cafeteria');
+    try {
+      await seedCafeteriaStampsDemo(workspaceId);
+      toast.success('Demo Cafetería / Gastronomía (Sellos) cargada con éxito');
+    } catch (err: any) {
+      console.error(err);
+      toast.error('Error al cargar demo: ' + (err.message || ''));
+    } finally {
+      setDemoLoading(null);
+    }
+  };
+
+  const handleClearDemoData = async () => {
+    if (!workspaceId) {
+      toast.error('No se detectó un Workspace activo');
+      return;
+    }
+    setDemoLoading('clear');
+    try {
+      await clearWorkspaceLoyaltyData(workspaceId);
+      toast.success('Datos de prueba vaciados. Sistema listo desde cero');
+    } catch (err: any) {
+      console.error(err);
+      toast.error('Error al vaciar datos: ' + (err.message || ''));
+    } finally {
+      setDemoLoading(null);
+    }
+  };
 
   const handleSaveNotification = useCallback(async () => {
     await saveConfigToDb();
@@ -726,6 +785,106 @@ export function ProgramConfig() {
           </p>
         </div>
       </div>
+
+      {/* CARD 5: Modo Demo Comercial (Ventas en Vivo B2B) */}
+      <section className="bg-surface-container-lowest rounded-2xl p-5 sm:p-space-lg shadow-xs border-2 border-dashed border-amber-400/70 dark:border-amber-600/60 flex flex-col gap-space-md">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div>
+            <div className="flex items-center gap-2">
+              <Sparkles className="w-5 h-5 text-secondary" />
+              <h2 className="font-display text-lg font-bold text-on-surface">
+                Modo Demo Comercial (Ventas en Vivo)
+              </h2>
+            </div>
+            <p className="font-sans text-xs text-on-surface-variant mt-0.5">
+              Prepara el sistema en 1 clic con clientes argentinos realistas, premios y transacciones para demostraciones comerciales en vivo.
+            </p>
+          </div>
+          <span className="self-start sm:self-auto px-2.5 py-1 rounded-full bg-amber-100 text-amber-900 dark:bg-amber-950/60 dark:text-amber-300 font-mono text-[11px] font-bold border border-amber-300 dark:border-amber-700">
+            Kit Demo B2B
+          </span>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          {/* Botón 1: Barbería / Peluquería & Estética (Puntos) */}
+          <button
+            type="button"
+            disabled={demoLoading !== null}
+            onClick={handleLoadBarberiaDemo}
+            className="p-4 rounded-xl bg-surface-container-low hover:bg-emerald-50/80 dark:hover:bg-emerald-950/30 border border-outline-variant/60 hover:border-primary transition-all flex flex-col justify-between gap-3 text-left group cursor-pointer disabled:opacity-60 shadow-2xs"
+          >
+            <div className="flex items-center justify-between w-full">
+              <div className="w-10 h-10 rounded-xl bg-primary text-on-primary flex items-center justify-center shadow-xs">
+                {demoLoading === 'barberia' ? (
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                ) : (
+                  <Scissors className="w-5 h-5" />
+                )}
+              </div>
+              <span className="px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-900 dark:bg-emerald-950/60 dark:text-emerald-300 font-mono text-[10px] font-bold border border-emerald-300 dark:border-emerald-800">
+                Modo Puntos
+              </span>
+            </div>
+            <div>
+              <span className="font-display text-sm font-bold text-on-surface block group-hover:text-primary transition-colors">
+                Cargar Demo: Barbería / Peluquería & Estética (Puntos)
+              </span>
+              <span className="font-sans text-xs text-on-surface-variant mt-1 block leading-relaxed">
+                Configura 1 pto cada $100, premios de corte/barba/estética, 6 clientes activos (ej. DNI 38451290) y 12 transacciones.
+              </span>
+            </div>
+          </button>
+
+          {/* Botón 2: Cafetería / Gastronomía (Sellos) */}
+          <button
+            type="button"
+            disabled={demoLoading !== null}
+            onClick={handleLoadCafeteriaDemo}
+            className="p-4 rounded-xl bg-surface-container-low hover:bg-amber-50/80 dark:hover:bg-amber-950/30 border border-outline-variant/60 hover:border-secondary transition-all flex flex-col justify-between gap-3 text-left group cursor-pointer disabled:opacity-60 shadow-2xs"
+          >
+            <div className="flex items-center justify-between w-full">
+              <div className="w-10 h-10 rounded-xl bg-secondary text-on-secondary flex items-center justify-center shadow-xs">
+                {demoLoading === 'cafeteria' ? (
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                ) : (
+                  <Coffee className="w-5 h-5" />
+                )}
+              </div>
+              <span className="px-2 py-0.5 rounded-md bg-amber-100 text-amber-900 dark:bg-amber-950/60 dark:text-amber-300 font-mono text-[10px] font-bold border border-amber-300 dark:border-amber-800">
+                Modo Sellos (8)
+              </span>
+            </div>
+            <div>
+              <span className="font-display text-sm font-bold text-on-surface block group-hover:text-secondary transition-colors">
+                Cargar Demo: Cafetería / Gastronomía (Sellos)
+              </span>
+              <span className="font-sans text-xs text-on-surface-variant mt-1 block leading-relaxed">
+                Tarjeta artesanal de 8 sellos, Café + Medialuna gratis, clientes con 8/8 sellos listos para canjear en vivo (DNI 38451290).
+              </span>
+            </div>
+          </button>
+        </div>
+
+        {/* Botón 3: Vaciar Datos de Prueba */}
+        <div className="pt-1 border-t border-outline-variant/40 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <span className="font-sans text-xs text-on-surface-variant">
+            ¿El cliente quiere probar cargando su propio DNI desde cero?
+          </span>
+          <button
+            type="button"
+            disabled={demoLoading !== null}
+            onClick={handleClearDemoData}
+            className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-surface-container hover:bg-error-container hover:text-on-error-container text-on-surface-variant font-sans text-xs font-semibold transition-colors cursor-pointer disabled:opacity-60 border border-outline-variant/50"
+          >
+            {demoLoading === 'clear' ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <RotateCcw className="w-4 h-4" />
+            )}
+            <span>Vaciar Datos de Prueba (Dejar en Cero)</span>
+          </button>
+        </div>
+      </section>
 
       {/* MODAL DE RECOMPENSA */}
       {isRewardModalOpen && (

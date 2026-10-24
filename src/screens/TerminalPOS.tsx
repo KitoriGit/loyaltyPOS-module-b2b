@@ -504,7 +504,7 @@ export function TerminalPOS() {
   return (
     <div className="flex flex-col w-full items-center justify-start pb-space-xl">
       {/* Barra de Estado Superior Ergonómica */}
-      <div className="w-full max-w-3xl flex items-center justify-between px-space-xs mb-space-sm">
+      <div className="w-full max-w-3xl flex items-center justify-between flex-wrap gap-2 px-space-xs mb-space-sm">
         <div className="flex items-center gap-space-xs text-on-surface-variant">
           <Touchpad className="w-4 h-4 text-primary" />
           <span className="font-mono text-xs uppercase tracking-wider font-semibold text-on-surface">Terminal POS Craft</span>
@@ -520,7 +520,7 @@ export function TerminalPOS() {
       </div>
       
       {/* Contenedor Principal POS - Warm White con bordes sutiles */}
-      <div className="w-full max-w-3xl bg-surface-container-lowest rounded-2xl shadow-[0_2px_12px_rgba(44,30,20,0.04)] border border-outline-variant/60 p-6 md:p-8 flex flex-col gap-space-md">
+      <div className="w-full max-w-3xl bg-surface-container-lowest rounded-2xl shadow-[0_2px_12px_rgba(44,30,20,0.04)] border border-outline-variant/60 p-4 sm:p-6 md:p-8 flex flex-col gap-space-md">
         
         {/* 1. DNI / Identificación del Cliente */}
         <div className="flex flex-col gap-space-xs">

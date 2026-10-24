@@ -233,6 +233,7 @@ interface LoyaltyState {
   updateReward: (id: string, reward: Partial<Reward>) => Promise<void>;
   deleteReward: (id: string) => Promise<void>;
   updateCustomerTier: (dni: string, tier: TierType, isManual?: boolean) => Promise<void>;
+  updateCustomer: (id: string, data: { name: string; phone: string; dni?: string }) => Promise<boolean>;
   processPurchase: (dni: string, ticketAmount: number) => ProcessPurchaseResult | null;
   redeemPoints: (dni: string, pointsToDeduct: number, rewardId?: string) => Promise<void>;
   redeemStamps: (dni: string, stampsToDeduct: number, rewardId?: string) => Promise<void>;
@@ -405,6 +406,8 @@ export const useLoyaltyStore = create<LoyaltyState>((set, get) => ({
         workspaceId: c.workspace_id,
         dni: c.dni,
         name: c.name,
+        email: c.email || undefined,
+        phone: c.phone || undefined,
         points: Number(c.points) || 0,
         stamps: Number(c.stamps) || 0,
         tier: (c.tier as TierType) || 'BRONZE',
@@ -429,6 +432,9 @@ export const useLoyaltyStore = create<LoyaltyState>((set, get) => ({
         id: t.id,
         date: t.created_at,
         customerId: t.customer_id,
+        branchId: t.branch_id || undefined,
+        employeeId: t.employee_id || undefined,
+        rewardId: t.reward_id || undefined,
         type: t.type,
         amount: Number(t.amount) || 0,
         pointsChange: Number(t.points_change) || 0,
@@ -598,6 +604,52 @@ export const useLoyaltyStore = create<LoyaltyState>((set, get) => ({
     } catch (err) {
       console.error('Error eliminando recompensa en DB:', err);
     }
+  },
+
+  updateCustomer: async (id, data) => {
+    const wsId = useAuthStore.getState().workspaceId;
+    const cleanName = data.name.trim();
+    const cleanPhone = (data.phone || '').trim();
+    const cleanDni = data.dni?.trim();
+
+    set((state) => ({
+      customers: state.customers.map((c) =>
+        c.id === id
+          ? {
+              ...c,
+              name: cleanName || c.name,
+              phone: cleanPhone || undefined,
+              dni: cleanDni || c.dni,
+            }
+          : c
+      ),
+    }));
+
+    if (wsId) {
+      try {
+        const updatePayload: Record<string, any> = {
+          name: cleanName,
+          phone: cleanPhone || null,
+          updated_at: new Date().toISOString(),
+        };
+        if (cleanDni) {
+          updatePayload.dni = cleanDni;
+        }
+
+        const { error } = await supabase
+          .from('loyalty_customers')
+          .update(updatePayload)
+          .eq('id', id)
+          .eq('workspace_id', wsId);
+
+        if (error) throw error;
+        return true;
+      } catch (err) {
+        console.error('Error actualizando cliente en DB:', err);
+        return false;
+      }
+    }
+    return true;
   },
 
   updateCustomerTier: async (dni, newTier, isManual = true) => {
